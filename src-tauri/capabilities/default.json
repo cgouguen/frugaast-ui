@@ -1,0 +1,24 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Capability for the main window",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "opener:default",
+    {
+      "identifier": "shell:allow-spawn",
+      "allow": [
+        {
+          "name": "run-python",
+          "cmd": "/home/christophe/Workspace/coding-assistants/frugaast/.venv/bin/python",
+          "args": ["/home/christophe/Workspace/coding-assistants/frugaast/server.py"]
+        },
+        {
+          "name": "binaries/server",
+          "sidecar": true
+        }
+      ]
+    }
+  ]
+}

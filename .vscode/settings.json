@@ -1,0 +1,15 @@
+{
+    "terminal.integrated.rightClickBehavior": "nothing",
+    "terminal.integrated.defaultProfile.linux": "tmuxinator",
+    "terminal.integrated.copyOnSelection": true,
+    "terminal.integrated.profiles.linux": {
+        "tmuxinator": {
+            "path": "/bin/bash",
+            "args": [
+                "-c",
+                "tmuxinator start -p /home/christophe/Workspace/chris-infra/tmux/generic.yml frugaast-ui ${workspaceFolder}"
+            ]
+        }
+    },
+    "_note": "Kill the session with `tmux kill-session"
+}
