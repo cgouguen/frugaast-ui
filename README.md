@@ -7,9 +7,12 @@ npm run tauri dev
 # Sidecar
 ## Install the JS package
 npm install @tauri-apps/plugin-shell
+npm install @tauri-apps/plugin-dialog
 
 ## Install the Rust crate
+cd src-tauri
 cargo add tauri-plugin-shell
+cargo add tauri-plugin-dialog
 
 ## ensure it is initialized in your `src-tauri/src/lib.rs` file:
 ```rust
