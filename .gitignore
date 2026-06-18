@@ -10,3 +10,4 @@ dist-ssr
 Cargo.lock
 
 .aider*
+**/.frugaast/
