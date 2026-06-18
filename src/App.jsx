@@ -3,7 +3,12 @@ import { Command } from "@tauri-apps/plugin-shell";
 import { open } from "@tauri-apps/plugin-dialog";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { FolderOpen, Send, Square, Terminal, FileCode2, Sparkles, Hash } from "lucide-react";
+import { 
+  FolderOpen, Send, Square, Terminal, FileCode2, 
+  Sparkles, Plus, Trash2, RefreshCcw, Map, 
+  Clipboard, Code, MessageSquare, Bot, User, 
+  Settings2, Activity
+} from "lucide-react";
 import "./App.css";
 
 export default function App() {
@@ -22,17 +27,13 @@ export default function App() {
   const [activeFiles, setActiveFiles] = useState([]);
   const [stats, setStats] = useState({ tokens: 0, cost: 0, session_cost: 0 });
   const [approvalReq, setApprovalReq] = useState(null);
-  
-  // Autocomplete
-  const [autoOptions, setAutoOptions] = useState([]);
-  const [autoIndex, setAutoIndex] = useState(0);
 
   const wsRef = useRef(null);
   const childRef = useRef(null);
   const chatEndRef = useRef(null);
   const textareaRef = useRef(null);
 
-  // --- 1. INITIALIZATION & WEBSOCKET ---
+  // --- INITIALIZATION & WEBSOCKET ---
   useEffect(() => {
     async function startBackendAndConnect() {
       try {
@@ -47,7 +48,7 @@ export default function App() {
           const child = await command.spawn();
           childRef.current = child;
         }
-        setStatus("Connecting to WebSocket...");
+        setStatus("Connecting to core...");
         setTimeout(connectWebSocket, 1000);
       } catch (err) {
         console.error("Failed to start backend:", err);
@@ -68,8 +69,8 @@ export default function App() {
 
       ws.onclose = () => {
         setIsConnected(false);
-        setStatus("Disconnected from server. Retrying in 3s...");
-        setTimeout(connectWebSocket, 3000); // Basic auto-reconnect
+        setStatus("Disconnected. Retrying...");
+        setTimeout(connectWebSocket, 3000);
       };
     }
 
@@ -81,7 +82,7 @@ export default function App() {
     };
   }, []);
 
-  // Smart Auto-scroll: Only scroll to bottom when chat updates
+  // Scroll to bottom dynamically
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chat]);
@@ -90,11 +91,11 @@ export default function App() {
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`;
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 300)}px`;
     }
   }, [input]);
 
-  // --- 2. SERVER EVENT HANDLER ---
+  // --- SERVER EVENT HANDLER ---
   function handleServerEvent(data) {
     switch (data.type) {
       case "CoreContextUpdated":
@@ -102,10 +103,6 @@ export default function App() {
         break;
       case "ContextStatsUpdated":
         setStats(data.payload);
-        break;
-      case "AutocompleteOptions":
-        setAutoOptions(data.payload.options);
-        setAutoIndex(0);
         break;
       case "CoreAgenticTaskProgress":
         setStatus(data.payload.message);
@@ -119,30 +116,21 @@ export default function App() {
         setChat((prev) => {
           const newChat = [...prev];
           const lastMsg = newChat[newChat.length - 1];
-          
-          // Safeguard against undefined chunks from backend serialization issues
           const chunk = data.payload?.chunk || "";
 
           if (lastMsg && lastMsg.role === "assistant" && !lastMsg.isComplete) {
-            // ✅ CORRECT: Replace the entire object instead of mutating it
-            newChat[newChat.length - 1] = {
-              ...lastMsg,
-              content: lastMsg.content + chunk
-            };
+            newChat[newChat.length - 1] = { ...lastMsg, content: lastMsg.content + chunk };
           } else {
-            // Push a new safe object
             newChat.push({ role: "assistant", content: chunk, isComplete: false });
           }
           return newChat;
         });
         break;
-
       case "CoreLLMResponseComplete":
         setChat((prev) => {
           const newChat = [...prev];
           const lastMsg = newChat[newChat.length - 1];
           if (lastMsg && lastMsg.role === "assistant") {
-            // ✅ CORRECT: Replace object instead of mutating
             newChat[newChat.length - 1] = { ...lastMsg, isComplete: true };
           }
           return newChat;
@@ -159,8 +147,32 @@ export default function App() {
     }
   }
 
-  // --- 3. ACTIONS ---
-  async function handleOpenFolder() {
+  // --- GUI ACTIONS (Replaces Slash Commands) ---
+  const sendHiddenCommand = (commandStr) => {
+    if (!wsRef.current) return;
+    wsRef.current.send(JSON.stringify({ command: "chat", input: commandStr, mode: mode }));
+  };
+
+  const handleAddFile = async () => {
+    try {
+      const selected = await open({ multiple: true, directory: false });
+      if (Array.isArray(selected)) {
+        selected.forEach(file => sendHiddenCommand(`/add ${file}`));
+      } else if (selected) {
+        sendHiddenCommand(`/add ${selected}`);
+      }
+    } catch (err) {
+      console.error("Failed to pick files:", err);
+    }
+  };
+
+  const handleRemoveFile = (file) => sendHiddenCommand(`/drop ${file}`);
+  const handleResetSession = () => sendHiddenCommand(`/reset`);
+  const handleCopyRepoMap = () => sendHiddenCommand(`/copy-repomap`);
+  const handleCopyBuild = () => sendHiddenCommand(`/copy-build-message`);
+
+  // --- CORE ACTIONS ---
+  async function handleOpenWorkspace() {
     try {
       const selectedPath = await open({ directory: true, multiple: false });
       if (selectedPath && wsRef.current) {
@@ -168,20 +180,18 @@ export default function App() {
         wsRef.current.send(JSON.stringify({ command: "init_workspace", path: selectedPath }));
       }
     } catch (err) {
-      console.error("Failed to open dialog:", err);
+      console.error("Failed to open workspace:", err);
     }
   }
 
   const sendMessage = () => {
     if (!input.trim() || !wsRef.current || isGenerating) return;
-
     setChat((prev) => [...prev, { role: "user", content: input.trim() }]);
     wsRef.current.send(JSON.stringify({ command: "chat", input: input.trim(), mode }));
     
     setInput("");
-    setAutoOptions([]);
     setIsGenerating(true);
-    setStatus("Thinking...");
+    setStatus("Generating response...");
     if (textareaRef.current) textareaRef.current.style.height = "auto";
   };
 
@@ -189,7 +199,7 @@ export default function App() {
     if (wsRef.current) {
       wsRef.current.send(JSON.stringify({ command: "cancel" }));
       setIsGenerating(false);
-      setStatus("Cancelled");
+      setStatus("Operation cancelled");
     }
   };
 
@@ -204,61 +214,7 @@ export default function App() {
     setApprovalReq(null);
   };
 
-  // --- 4. INPUT & AUTOCOMPLETE HANDLERS ---
-  const handleInputChange = (e) => {
-    const val = e.target.value;
-    setInput(val);
-    if (wsRef.current && val.trim()) {
-      wsRef.current.send(JSON.stringify({ command: "autocomplete", input: val }));
-    } else {
-      setAutoOptions([]);
-    }
-  };
-
-  const applyAutocomplete = (selected) => {
-    let newVal = input;
-    if (input.startsWith("/") && !input.includes(" ")) {
-      newVal = selected + " ";
-    } else if (input.startsWith("/add ") || input.startsWith("/drop ")) {
-      const parts = input.split(" ");
-      parts[parts.length - 1] = selected;
-      newVal = parts.join(" ") + " ";
-    } else {
-      const match = input.match(/`?[a-zA-Z0-9_]*$/);
-      if (match) {
-        newVal = input.slice(0, match.index) + "`" + selected + "` ";
-      } else {
-        newVal = input + selected + " ";
-      }
-    }
-    setInput(newVal);
-    setAutoOptions([]);
-    textareaRef.current?.focus();
-  };
-
   const handleKeyDown = (e) => {
-    // Autocomplete Navigation
-    if (autoOptions.length > 0) {
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        setAutoIndex((prev) => (prev + 1) % autoOptions.length);
-        return;
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        setAutoIndex((prev) => (prev === 0 ? autoOptions.length - 1 : prev - 1));
-        return;
-      } else if (e.key === "Enter" || e.key === "Tab") {
-        e.preventDefault();
-        applyAutocomplete(autoOptions[autoIndex]);
-        return;
-      } else if (e.key === "Escape") {
-        e.preventDefault();
-        setAutoOptions([]);
-        return;
-      }
-    } 
-    
-    // Message Submission
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
@@ -266,154 +222,183 @@ export default function App() {
   };
 
   return (
-    <div className="app-container">
+    <div className="app-layout">
       {/* --- SIDEBAR --- */}
       <aside className="sidebar">
-        <div className="brand">
-          <Sparkles size={20} color="var(--accent-primary)" />
-          Frugaast
-        </div>
-        
-        <div className={`status-badge ${isConnected ? 'connected' : 'disconnected'}`}>
-          <div className="status-dot" />
-          {isConnected ? "Core Connected" : "Disconnected"}
-        </div>
-        
-        <button className="btn-outline" onClick={handleOpenFolder} disabled={!isConnected || isGenerating}>
-          <FolderOpen size={16} />
-          Open Workspace
-        </button>
-        
-        {workspace && (
-          <div className="workspace-path" title={workspace}>
-            {workspace.split('/').pop() || workspace}
+        <div className="sidebar-header">
+          <div className="brand">
+            <Sparkles size={18} className="brand-icon" />
+            <span>Frugaast</span>
           </div>
-        )}
+          <div className={`status-dot ${isConnected ? 'online' : 'offline'}`} title={isConnected ? "Connected" : "Disconnected"} />
+        </div>
         
-        <hr style={{ borderColor: 'var(--border-color)' }} />
+        <div className="workspace-section">
+          <button className="workspace-btn" onClick={handleOpenWorkspace} disabled={!isConnected || isGenerating}>
+            <FolderOpen size={16} />
+            <span className="truncate">{workspace ? workspace.split(/[/\\]/).pop() : "Open Workspace"}</span>
+          </button>
+        </div>
         
-        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-          <div className="section-title">Context Files ({activeFiles.length})</div>
-          <ul className="context-list">
+        <div className="context-section">
+          <div className="section-header">
+            <span className="section-title">Context ({activeFiles.length})</span>
+            <button className="icon-btn-small" onClick={handleAddFile} title="Add files to context" disabled={!isConnected || isGenerating}>
+              <Plus size={14} />
+            </button>
+          </div>
+          
+          <div className="context-list">
             {activeFiles.length === 0 ? (
-              <li style={{ fontSize: 12, color: 'var(--text-muted)' }}>No files in context. Try /add</li>
+              <div className="empty-state">No files loaded.</div>
             ) : (
               activeFiles.map((f, i) => (
-                <li key={i} className="context-item">
-                  <FileCode2 size={14} color="var(--accent-primary)" />
-                  {f}
-                </li>
+                <div key={i} className="context-item group">
+                  <div className="context-item-name truncate" title={f}>
+                    <FileCode2 size={14} className="file-icon" />
+                    {f.split(/[/\\]/).pop()}
+                  </div>
+                  <button className="remove-btn" onClick={() => handleRemoveFile(f)} title="Remove file">
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               ))
             )}
-          </ul>
+          </div>
         </div>
 
-        <div className="stats-panel">
-          <div>Tokens: {stats.tokens.toLocaleString()}</div>
-          <div>Context Cost: ${stats.cost.toFixed(4)}</div>
-          <div className="cost">Session: ${stats.session_cost.toFixed(4)}</div>
+        <div className="stats-card">
+          <div className="stat-row">
+            <span className="stat-label">Tokens</span>
+            <span className="stat-value">{stats.tokens.toLocaleString()}</span>
+          </div>
+          <div className="stat-row">
+            <span className="stat-label">Context</span>
+            <span className="stat-value">${stats.cost.toFixed(4)}</span>
+          </div>
+          <div className="stat-divider" />
+          <div className="stat-row highlight">
+            <span className="stat-label">Session</span>
+            <span className="stat-value">${stats.session_cost.toFixed(4)}</span>
+          </div>
         </div>
       </aside>
 
-      {/* --- MAIN CHAT --- */}
-      <main className="main-content">
-        <div className="chat-history">
+      {/* --- MAIN CONTENT --- */}
+      <main className="main-area">
+        {/* TOP ACTION BAR */}
+        <header className="top-bar">
+          <div className="status-indicator">
+            <Activity size={14} className={isGenerating ? "spin-pulse" : "static"} />
+            <span className="status-text">{status}</span>
+          </div>
+          
+          <div className="actions-menu">
+            <button className="action-btn" onClick={handleCopyRepoMap} title="Copy Repo Map" disabled={!workspace}>
+              <Map size={16} /> Map
+            </button>
+            <button className="action-btn" onClick={handleCopyBuild} title="Copy Build Messages">
+              <Clipboard size={16} /> Data
+            </button>
+            <button className="action-btn danger-hover" onClick={handleResetSession} title="Reset Session Context">
+              <RefreshCcw size={16} /> Reset
+            </button>
+          </div>
+        </header>
+
+        {/* CHAT HISTORY */}
+        <div className="chat-scroll-area">
           {chat.length === 0 && (
-            <div style={{ margin: "auto", textAlign: "center", color: "var(--text-muted)", marginTop: "20vh" }}>
-              <Terminal size={48} opacity={0.2} style={{ marginBottom: 16 }} />
-              <h2>How can I help you code today?</h2>
-              <p style={{ marginTop: 8, fontSize: 14 }}>Select a workspace and type a prompt, or use <code>/add</code> to include files.</p>
+            <div className="welcome-screen">
+              <div className="welcome-icon-wrapper">
+                <Terminal size={40} />
+              </div>
+              <h2>Ready to build.</h2>
+              <p>Add files to your context and start exploring your code.</p>
             </div>
           )}
 
-          {chat.map((msg, i) => (
-            <div key={i} className={`message-wrapper ${msg.role}`}>
-              <span className="message-sender">{msg.role}</span>
-              <div className="message-bubble">
-                {msg.role === "assistant" ? (
-                  // ✅ FIX: Removed className from ReactMarkdown, wrapped in a div instead
-                  <div className="markdown-body">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {msg.content}
-                    </ReactMarkdown>
-                  </div>
-                ) : (
-                  <span style={{ whiteSpace: "pre-wrap" }}>{msg.content}</span>
-                )}
+          <div className="messages-container">
+            {chat.map((msg, i) => (
+              <div key={i} className={`message-row ${msg.role}`}>
+                <div className="message-avatar">
+                  {msg.role === "assistant" ? <Bot size={18} /> : msg.role === "user" ? <User size={18} /> : <Settings2 size={18} />}
+                </div>
+                <div className="message-content">
+                  {msg.role === "assistant" ? (
+                    <div className="markdown-prose">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                    </div>
+                  ) : (
+                     <div className="plain-text">{msg.content}</div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
-          <div ref={chatEndRef} />
+            ))}
+            <div ref={chatEndRef} />
+          </div>
         </div>
 
-        {/* --- INPUT AREA --- */}
-        <div className="input-section">
-          <div className="input-container">
-            
-            {/* Autocomplete Popup */}
-            {autoOptions.length > 0 && (
-              <div className="autocomplete-menu">
-                <div className="autocomplete-header">
-                  [↑/↓] Navigate • [Enter/Tab] Select • [Esc] Cancel
-                </div>
-                {autoOptions.map((opt, i) => (
-                  <div 
-                    key={opt} 
-                    className={`autocomplete-item ${i === autoIndex ? "active" : ""}`}
-                    onMouseEnter={() => setAutoIndex(i)} 
-                    onClick={() => applyAutocomplete(opt)}
-                  >
-                    <Hash size={14} /> {opt}
-                  </div>
-                ))}
-              </div>
-            )}
+        {/* INPUT SECTION */}
+        <div className="input-wrapper">
+          <div className="input-box">
+            <div className="mode-toggle">
+              <button 
+                className={`mode-btn ${mode === "ask" ? "active" : ""}`} 
+                onClick={() => setMode("ask")} title="Ask questions without editing"
+              >
+                <MessageSquare size={14} /> Ask
+              </button>
+              <button 
+                className={`mode-btn ${mode === "code" ? "active" : ""}`} 
+                onClick={() => setMode("code")} title="Allow the assistant to edit code"
+              >
+                <Code size={14} /> Code
+              </button>
+            </div>
 
-            <select className="mode-select" value={mode} onChange={(e) => setMode(e.target.value)} disabled={isGenerating}>
-              <option value="code">CODE</option>
-              <option value="ask">ASK</option>
-            </select>
-            
             <textarea
               ref={textareaRef}
-              className="chat-textarea"
+              className="chat-input"
               value={input}
-              onChange={handleInputChange}
+              onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={isConnected ? "Message Frugaast... (Shift+Enter for newline)" : "Waiting for backend..."}
+              placeholder={isConnected ? "Message Frugaast... (Shift+Enter for new line)" : "Connecting..."}
               disabled={!isConnected || approvalReq !== null || isGenerating}
               autoFocus
               rows={1}
             />
 
-            {isGenerating ? (
-              <button type="button" className="btn-icon stop" onClick={handleCancel} title="Stop Generation">
-                <Square size={16} fill="currentColor" />
-              </button>
-            ) : (
-              <button type="button" className="btn-icon" onClick={sendMessage} disabled={!isConnected || !input.trim()} title="Send Message">
-                <Send size={16} style={{ marginLeft: 2 }} />
-              </button>
-            )}
-          </div>
-          
-          <div className="status-bar">
-            <span>{status}</span>
-            <span>{mode.toUpperCase()} MODE</span>
+            <div className="input-actions">
+              {isGenerating ? (
+                <button type="button" className="send-btn stop" onClick={handleCancel} title="Stop Generation">
+                  <Square size={16} fill="currentColor" />
+                </button>
+              ) : (
+                <button type="button" className="send-btn" onClick={sendMessage} disabled={!isConnected || !input.trim()} title="Send">
+                  <Send size={16} />
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </main>
 
       {/* --- APPROVAL MODAL --- */}
       {approvalReq && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <h3>File Access Request</h3>
-            <p>The assistant is requesting to read the following files to gather context:</p>
-            <pre>{approvalReq.files.join("\n")}</pre>
-            <div className="modal-actions">
-              <button className="btn-deny" onClick={() => handleApproval(false)}>Deny</button>
-              <button className="btn-allow" onClick={() => handleApproval(true)}>Allow Access</button>
+        <div className="modal-backdrop">
+          <div className="modal-panel">
+            <div className="modal-header">
+              <Settings2 size={20} className="modal-icon" />
+              <h3>File Access Request</h3>
+            </div>
+            <p className="modal-desc">The assistant is requesting to read the following files to gather context:</p>
+            <div className="modal-file-list">
+              {approvalReq.files.map((f, i) => <div key={i} className="modal-file-item">{f}</div>)}
+            </div>
+            <div className="modal-footer">
+              <button className="btn-secondary" onClick={() => handleApproval(false)}>Deny</button>
+              <button className="btn-primary" onClick={() => handleApproval(true)}>Allow Access</button>
             </div>
           </div>
         </div>
