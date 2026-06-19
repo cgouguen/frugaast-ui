@@ -11,3 +11,4 @@ Cargo.lock
 
 .aider*
 **/.frugaast/
+src-tauri/target/

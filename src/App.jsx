@@ -7,7 +7,7 @@ import {
   FolderOpen, Send, Square, Terminal, FileCode2, 
   Sparkles, Plus, Trash2, RefreshCcw, Map, 
   Clipboard, Code, MessageSquare, Bot, User, 
-  Settings2, Activity
+  Settings2, Activity, Search, X
 } from "lucide-react";
 import "./App.css";
 
@@ -27,6 +27,12 @@ export default function App() {
   const [activeFiles, setActiveFiles] = useState([]);
   const [stats, setStats] = useState({ tokens: 0, cost: 0, session_cost: 0 });
   const [approvalReq, setApprovalReq] = useState(null);
+
+  // Fuzzy Search
+  const [showFuzzySearch, setShowFuzzySearch] = useState(false);
+  const [fuzzyQuery, setFuzzyQuery] = useState("");
+  const [fuzzyResults, setFuzzyResults] = useState([]);
+  const [fuzzySelectedIndex, setFuzzySelectedIndex] = useState(0);
 
   const wsRef = useRef(null);
   const childRef = useRef(null);
@@ -142,6 +148,10 @@ export default function App() {
       case "CoreUserFileApprovalRequested":
         setApprovalReq(data.payload);
         break;
+      case "FuzzySearchResults":
+        setFuzzyResults(data.payload.files || []);
+        setFuzzySelectedIndex(0);
+        break;
       default:
         break;
     }
@@ -153,16 +163,28 @@ export default function App() {
     wsRef.current.send(JSON.stringify({ command: "chat", input: commandStr, mode: mode }));
   };
 
-  const handleAddFile = async () => {
-    try {
-      const selected = await open({ multiple: true, directory: false });
-      if (Array.isArray(selected)) {
-        selected.forEach(file => sendHiddenCommand(`/add ${file}`));
-      } else if (selected) {
-        sendHiddenCommand(`/add ${selected}`);
-      }
-    } catch (err) {
-      console.error("Failed to pick files:", err);
+  const handleAddFileClick = () => {
+    setShowFuzzySearch(true);
+    setFuzzyQuery("");
+    setFuzzyResults([]);
+    setFuzzySelectedIndex(0);
+    if (wsRef.current) {
+      wsRef.current.send(JSON.stringify({ command: "fuzzy_search_files", query: "" }));
+    }
+  };
+
+  const handleFuzzyQueryChange = (e) => {
+    const q = e.target.value;
+    setFuzzyQuery(q);
+    if (wsRef.current) {
+      wsRef.current.send(JSON.stringify({ command: "fuzzy_search_files", query: q }));
+    }
+  };
+
+  const handleSelectFuzzyFile = (file, closeMenu = true) => {
+    sendHiddenCommand(`/add ${file}`);
+    if (closeMenu) {
+      setShowFuzzySearch(false);
     }
   };
 
@@ -243,7 +265,7 @@ export default function App() {
         <div className="context-section">
           <div className="section-header">
             <span className="section-title">Context ({activeFiles.length})</span>
-            <button className="icon-btn-small" onClick={handleAddFile} title="Add files to context" disabled={!isConnected || isGenerating}>
+            <button className="icon-btn-small" onClick={handleAddFileClick} title="Add files to context" disabled={!isConnected || isGenerating}>
               <Plus size={14} />
             </button>
           </div>
@@ -383,6 +405,66 @@ export default function App() {
           </div>
         </div>
       </main>
+
+      {/* --- FUZZY SEARCH MODAL --- */}
+      {showFuzzySearch && (
+        <div className="modal-backdrop" onClick={() => setShowFuzzySearch(false)}>
+          <div className="modal-panel fuzzy-panel" onClick={e => e.stopPropagation()}>
+            <div className="fuzzy-header">
+              <Search size={18} className="fuzzy-icon" />
+              <input 
+                type="text" 
+                className="fuzzy-input" 
+                placeholder="Search files by name..." 
+                value={fuzzyQuery}
+                onChange={handleFuzzyQueryChange}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    setShowFuzzySearch(false);
+                  } else if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    setFuzzySelectedIndex((prev) => Math.min(prev + 1, Math.max(0, fuzzyResults.length - 1)));
+                  } else if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    setFuzzySelectedIndex((prev) => Math.max(prev - 1, 0));
+                  } else if (e.key === "Enter") {
+                    e.preventDefault();
+                    if (fuzzyResults[fuzzySelectedIndex]) {
+                      handleSelectFuzzyFile(fuzzyResults[fuzzySelectedIndex], true);
+                    }
+                  } else if (e.key === " ") {
+                    e.preventDefault();
+                    if (fuzzyResults[fuzzySelectedIndex]) {
+                      handleSelectFuzzyFile(fuzzyResults[fuzzySelectedIndex], false);
+                    }
+                  }
+                }}
+                autoFocus
+              />
+              <button className="icon-btn-small" onClick={() => setShowFuzzySearch(false)}>
+                <X size={16} />
+              </button>
+            </div>
+            <div className="fuzzy-results">
+              {fuzzyResults.length === 0 ? (
+                <div className="fuzzy-empty">No files found.</div>
+              ) : (
+                fuzzyResults.map((f, i) => (
+                  <div 
+                    key={i} 
+                    className={`fuzzy-item ${i === fuzzySelectedIndex ? 'selected' : ''}`} 
+                    onClick={() => handleSelectFuzzyFile(f)}
+                    onMouseEnter={() => setFuzzySelectedIndex(i)}
+                  >
+                    <FileCode2 size={14} className="file-icon" />
+                    <span className="truncate">{f}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* --- APPROVAL MODAL --- */}
       {approvalReq && (
