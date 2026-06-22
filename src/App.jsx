@@ -22,6 +22,7 @@ export default function App() {
   const [chat, setChat] = useState([]);
   const [input, setInput] = useState("");
   const [mode, setMode] = useState("code");
+  const [maxMapTokens, setMaxMapTokens] = useState(4096);
   
   // Context & Approvals
   const [activeFiles, setActiveFiles] = useState([]);
@@ -160,7 +161,9 @@ export default function App() {
   // --- GUI ACTIONS (Replaces Slash Commands) ---
   const sendHiddenCommand = (commandStr) => {
     if (!wsRef.current) return;
-    wsRef.current.send(JSON.stringify({ command: "chat", input: commandStr, mode: mode }));
+    const payload = { command: "chat", input: commandStr, mode: mode };
+    if (mode === "repomap") payload.max_map_token = maxMapTokens;
+    wsRef.current.send(JSON.stringify(payload));
   };
 
   const handleAddFileClick = () => {
@@ -209,7 +212,9 @@ export default function App() {
   const sendMessage = () => {
     if (!input.trim() || !wsRef.current || isGenerating) return;
     setChat((prev) => [...prev, { role: "user", content: input.trim() }]);
-    wsRef.current.send(JSON.stringify({ command: "chat", input: input.trim(), mode }));
+    const payload = { command: "chat", input: input.trim(), mode };
+    if (mode === "repomap") payload.max_map_token = maxMapTokens;
+    wsRef.current.send(JSON.stringify(payload));
     
     setInput("");
     setIsGenerating(true);
@@ -349,10 +354,20 @@ export default function App() {
                 <div className="message-content">
                   {msg.role === "assistant" ? (
                     <div className="markdown-prose">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {msg.content.includes("⋮") && !msg.content.includes("```")
+                          ? `\`\`\`text\n${msg.content}\n\`\`\``
+                          : msg.content}
+                      </ReactMarkdown>
                     </div>
                   ) : (
-                     <div className="plain-text">{msg.content}</div>
+                     <pre className="plain-text" style={{ 
+                       whiteSpace: "pre-wrap", 
+                       fontFamily: msg.content.includes("⋮") ? "monospace" : "inherit", 
+                       margin: 0 
+                     }}>
+                       {msg.content}
+                     </pre>
                   )}
                 </div>
               </div>
@@ -364,7 +379,7 @@ export default function App() {
         {/* INPUT SECTION */}
         <div className="input-wrapper">
           <div className="input-box">
-            <div className="mode-toggle">
+            <div className={`mode-toggle ${mode === "repomap" ? "no-border" : ""}`}>
               <button 
                 className={`mode-btn ${mode === "ask" ? "active" : ""}`} 
                 onClick={() => setMode("ask")} title="Ask questions without editing"
@@ -377,7 +392,32 @@ export default function App() {
               >
                 <Code size={14} /> Code
               </button>
+              <button 
+                className={`mode-btn ${mode === "repomap" ? "active" : ""}`} 
+                onClick={() => setMode("repomap")} title="Ask questions using the repository map"
+              >
+                <Map size={14} /> RepoMap
+              </button>
             </div>
+
+            {mode === "repomap" && (
+              <div className="repomap-settings">
+                <label htmlFor="maxMapTokens">Map Token Limit: <span>{maxMapTokens.toLocaleString()}</span></label>
+                <div className="slider-container">
+                  <input 
+                    type="range" 
+                    id="maxMapTokens" 
+                    min="1024" 
+                    max="16384" 
+                    step="512" 
+                    value={maxMapTokens} 
+                    onChange={(e) => setMaxMapTokens(Number(e.target.value))}
+                    className="styled-slider"
+                    title="Set maximum tokens to extract from repository map"
+                  />
+                </div>
+              </div>
+            )}
 
             <textarea
               ref={textareaRef}
