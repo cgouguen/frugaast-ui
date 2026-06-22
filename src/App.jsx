@@ -23,6 +23,7 @@ export default function App() {
   const [input, setInput] = useState("");
   const [mode, setMode] = useState("code");
   const [maxMapTokens, setMaxMapTokens] = useState(4096);
+  const [repomapContent, setRepomapContent] = useState("");
   
   // Context & Approvals
   const [activeFiles, setActiveFiles] = useState([]);
@@ -39,6 +40,7 @@ export default function App() {
   const childRef = useRef(null);
   const chatEndRef = useRef(null);
   const textareaRef = useRef(null);
+  const isRepomapReqRef = useRef(false);
 
   // --- INITIALIZATION & WEBSOCKET ---
   useEffect(() => {
@@ -120,28 +122,36 @@ export default function App() {
         setStatus("Ready");
         break;
       case "CoreLLMChunkReceived":
-        setChat((prev) => {
-          const newChat = [...prev];
-          const lastMsg = newChat[newChat.length - 1];
-          const chunk = data.payload?.chunk || "";
+        if (isRepomapReqRef.current) {
+          setRepomapContent((prev) => prev + (data.payload?.chunk || ""));
+          setIsGenerating(false);
+          setStatus("Ready");
+        } else {
+          setChat((prev) => {
+            const newChat = [...prev];
+            const lastMsg = newChat[newChat.length - 1];
+            const chunk = data.payload?.chunk || "";
 
-          if (lastMsg && lastMsg.role === "assistant" && !lastMsg.isComplete) {
-            newChat[newChat.length - 1] = { ...lastMsg, content: lastMsg.content + chunk };
-          } else {
-            newChat.push({ role: "assistant", content: chunk, isComplete: false });
-          }
-          return newChat;
-        });
+            if (lastMsg && lastMsg.role === "assistant" && !lastMsg.isComplete) {
+              newChat[newChat.length - 1] = { ...lastMsg, content: lastMsg.content + chunk };
+            } else {
+              newChat.push({ role: "assistant", content: chunk, isComplete: false });
+            }
+            return newChat;
+          });
+        }
         break;
       case "CoreLLMResponseComplete":
-        setChat((prev) => {
-          const newChat = [...prev];
-          const lastMsg = newChat[newChat.length - 1];
-          if (lastMsg && lastMsg.role === "assistant") {
-            newChat[newChat.length - 1] = { ...lastMsg, isComplete: true };
-          }
-          return newChat;
-        });
+        if (!isRepomapReqRef.current) {
+          setChat((prev) => {
+            const newChat = [...prev];
+            const lastMsg = newChat[newChat.length - 1];
+            if (lastMsg && lastMsg.role === "assistant") {
+              newChat[newChat.length - 1] = { ...lastMsg, isComplete: true };
+            }
+            return newChat;
+          });
+        }
         setIsGenerating(false);
         setStatus("Ready");
         setTimeout(() => textareaRef.current?.focus(), 100);
@@ -161,8 +171,7 @@ export default function App() {
   // --- GUI ACTIONS (Replaces Slash Commands) ---
   const sendHiddenCommand = (commandStr) => {
     if (!wsRef.current) return;
-    const payload = { command: "chat", input: commandStr, mode: mode };
-    if (mode === "repomap") payload.max_map_token = maxMapTokens;
+    const payload = { command: "chat", input: commandStr, mode: "ask" };
     wsRef.current.send(JSON.stringify(payload));
   };
 
@@ -209,17 +218,39 @@ export default function App() {
     }
   }
 
+  const fetchRepoMap = () => {
+    if (!wsRef.current || isGenerating) return;
+    
+    const payload = { 
+      command: "chat", 
+      input: input.trim() || " ", 
+      mode: "repomap",
+      max_map_token: maxMapTokens 
+    };
+    
+    isRepomapReqRef.current = true;
+    setRepomapContent("");
+    wsRef.current.send(JSON.stringify(payload));
+    
+    setIsGenerating(true);
+    setStatus("Generating RepoMap...");
+  };
+
   const sendMessage = () => {
     if (!input.trim() || !wsRef.current || isGenerating) return;
-    setChat((prev) => [...prev, { role: "user", content: input.trim() }]);
+    
     const payload = { command: "chat", input: input.trim(), mode };
-    if (mode === "repomap") payload.max_map_token = maxMapTokens;
+    
+    isRepomapReqRef.current = false;
+    setChat((prev) => [...prev, { role: "user", content: input.trim() }]);
     wsRef.current.send(JSON.stringify(payload));
     
     setInput("");
     setIsGenerating(true);
     setStatus("Generating response...");
-    if (textareaRef.current) textareaRef.current.style.height = "auto";
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
   };
 
   const handleCancel = () => {
@@ -267,6 +298,38 @@ export default function App() {
           </button>
         </div>
         
+        <div className="repomap-sidebar-section">
+          <div className="section-header">
+            <span className="section-title">Repo Map</span>
+            <button className="icon-btn-small" onClick={fetchRepoMap} title="Generate map based on chat input" disabled={!isConnected || isGenerating}>
+              <RefreshCcw size={14} />
+            </button>
+          </div>
+          
+          <div className="repomap-sidebar-settings">
+            <div className="stat-row">
+              <span className="stat-label">Token Limit</span>
+              <span className="stat-value">{maxMapTokens}</span>
+            </div>
+            <input 
+              type="range" 
+              min="1024" max="16384" step="512" 
+              value={maxMapTokens} 
+              onChange={(e) => setMaxMapTokens(Number(e.target.value))}
+              className="styled-slider"
+              title="Max tokens for Repo Map"
+            />
+          </div>
+          
+          <div className="repomap-sidebar-content">
+            {repomapContent ? (
+              <pre className="repomap-code">{repomapContent}</pre>
+            ) : (
+              <div className="empty-state">Click refresh to generate map.</div>
+            )}
+          </div>
+        </div>
+
         <div className="context-section">
           <div className="section-header">
             <span className="section-title">Context ({activeFiles.length})</span>
@@ -333,7 +396,7 @@ export default function App() {
           </div>
         </header>
 
-        {/* CHAT HISTORY */}
+        {/* MAIN DISPLAY AREA */}
         <div className="chat-scroll-area">
           {chat.length === 0 && (
             <div className="welcome-screen">
@@ -379,45 +442,22 @@ export default function App() {
         {/* INPUT SECTION */}
         <div className="input-wrapper">
           <div className="input-box">
-            <div className={`mode-toggle ${mode === "repomap" ? "no-border" : ""}`}>
+            <div className="mode-toggle">
               <button 
                 className={`mode-btn ${mode === "ask" ? "active" : ""}`} 
                 onClick={() => setMode("ask")} title="Ask questions without editing"
+                disabled={isGenerating}
               >
                 <MessageSquare size={14} /> Ask
               </button>
               <button 
                 className={`mode-btn ${mode === "code" ? "active" : ""}`} 
                 onClick={() => setMode("code")} title="Allow the assistant to edit code"
+                disabled={isGenerating}
               >
                 <Code size={14} /> Code
               </button>
-              <button 
-                className={`mode-btn ${mode === "repomap" ? "active" : ""}`} 
-                onClick={() => setMode("repomap")} title="Ask questions using the repository map"
-              >
-                <Map size={14} /> RepoMap
-              </button>
             </div>
-
-            {mode === "repomap" && (
-              <div className="repomap-settings">
-                <label htmlFor="maxMapTokens">Map Token Limit: <span>{maxMapTokens.toLocaleString()}</span></label>
-                <div className="slider-container">
-                  <input 
-                    type="range" 
-                    id="maxMapTokens" 
-                    min="1024" 
-                    max="16384" 
-                    step="512" 
-                    value={maxMapTokens} 
-                    onChange={(e) => setMaxMapTokens(Number(e.target.value))}
-                    className="styled-slider"
-                    title="Set maximum tokens to extract from repository map"
-                  />
-                </div>
-              </div>
-            )}
 
             <textarea
               ref={textareaRef}
