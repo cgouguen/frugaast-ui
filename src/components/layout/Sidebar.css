@@ -1,12 +1,28 @@
 /* Sidebar.css */
 .sidebar {
-  width: 280px;
-  min-width: 280px;
   background-color: var(--bg-panel);
   border-right: 1px solid var(--border-light);
   display: flex;
   flex-direction: column;
   z-index: 10;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.sidebar-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -2px;
+  width: 4px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 20;
+  transition: background-color 0.2s;
+}
+
+.sidebar-resize-handle:hover,
+.sidebar-resize-handle.is-resizing {
+  background-color: var(--accent-base);
 }
 
 .sidebar-header {

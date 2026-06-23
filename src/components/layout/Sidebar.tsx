@@ -1,10 +1,30 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useApp } from "../../context/AppContext";
 import { open } from "@tauri-apps/plugin-dialog";
 import { FolderOpen, Sparkles, FileCode2, Plus, Trash2, RefreshCcw } from "lucide-react";
 import "./Sidebar.css";
 
 export const Sidebar = () => {
+  const [sidebarWidth, setSidebarWidth] = useState(280);
+  const [isResizing, setIsResizing] = useState(false);
+
+  useEffect(() => {
+    if (!isResizing) return;
+    const handleMouseMove = (e: MouseEvent) => {
+      let newWidth = e.clientX;
+      if (newWidth < 200) newWidth = 200;
+      if (newWidth > 800) newWidth = 800;
+      setSidebarWidth(newWidth);
+    };
+    const handleMouseUp = () => setIsResizing(false);
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isResizing]);
+
   const { 
     isConnected, isGenerating, workspace, setWorkspace, initWorkspace, 
     activeFiles, sendHiddenCommand, setShowFuzzySearch, searchFiles, stats 
@@ -26,7 +46,7 @@ export const Sidebar = () => {
   };
 
   return (
-    <aside className="sidebar">
+    <aside className="sidebar" style={{ width: sidebarWidth }}>
       <div className="sidebar-header">
         <div className="brand">
           <Sparkles size={18} className="brand-icon" />
@@ -88,6 +108,11 @@ export const Sidebar = () => {
           <span className="stat-value">${stats.session_cost.toFixed(4)}</span>
         </div>
       </div>
+
+      <div 
+        className={`sidebar-resize-handle ${isResizing ? "is-resizing" : ""}`}
+        onMouseDown={(e) => { e.preventDefault(); setIsResizing(true); }}
+      />
     </aside>
   );
 };
