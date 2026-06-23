@@ -1,0 +1,25 @@
+/* ChatMessage.css */
+/* Message Rows */
+.message-row { display: flex; gap: 16px; line-height: 1.6; }
+.message-avatar {
+  width: 30px; height: 30px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-md); margin-top: 2px; border: 1px solid var(--border-light);
+}
+.message-row.user .message-avatar { background: var(--bg-surface); color: var(--text-primary); }
+.message-row.assistant .message-avatar { background: var(--accent-glow); color: var(--accent-base); border-color: rgba(59, 130, 246, 0.3); }
+.message-row.system .message-avatar { background: rgba(234, 179, 8, 0.1); color: var(--system); border-color: rgba(234, 179, 8, 0.2); }
+
+.message-content { flex: 1; min-width: 0; color: var(--text-primary); font-size: 14.5px; }
+.message-row.system .message-content { color: var(--system); font-style: italic; }
+
+.plain-text { white-space: pre-wrap; word-wrap: break-word; font-family: inherit; margin: 0; }
+
+/* Markdown Styling */
+.markdown-prose p { margin-bottom: 12px; }
+.markdown-prose p:last-child { margin-bottom: 0; }
+.markdown-prose a { color: var(--accent-base); text-decoration: none; }
+.markdown-prose a:hover { text-decoration: underline; }
+.markdown-prose ul, .markdown-prose ol { margin-left: 20px; margin-bottom: 12px; }
+.markdown-prose code { background: var(--bg-panel); border: 1px solid var(--border-strong); padding: 2px 6px; border-radius: 4px; font-family: 'Fira Code', monospace; font-size: 13px; color: #d4d4d8; }
+.markdown-prose pre { background: var(--bg-panel); padding: 16px; border-radius: var(--radius-md); overflow-x: auto; margin: 16px 0; border: 1px solid var(--border-light); }
+.markdown-prose pre code { background: transparent; padding: 0; border: none; color: inherit; font-size: 13px; }
