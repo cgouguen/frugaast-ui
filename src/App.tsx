@@ -19,20 +19,22 @@ export default function App() {
   const [workspace, setWorkspace] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   
-  // Chat & Input
+  // Tabs & Views
+  const [mainView, setMainView] = useState("chat"); // 'chat' or 'repomap'
+  
+  // Chat & Global Input
   const [chat, setChat] = useState([]);
   const [input, setInput] = useState("");
   const [mode, setMode] = useState("code");
   const [maxMapTokens, setMaxMapTokens] = useState(4096);
   const [repomapContent, setRepomapContent] = useState("");
-  const [mainView, setMainView] = useState("chat"); // 'chat' or 'repomap'
   
-  // Context & Approvals
+  // Context & Stats
   const [activeFiles, setActiveFiles] = useState([]);
   const [stats, setStats] = useState({ tokens: 0, cost: 0, session_cost: 0 });
   const [approvalReq, setApprovalReq] = useState(null);
 
-  // Fuzzy Search
+  // Fuzzy Search Modal
   const [showFuzzySearch, setShowFuzzySearch] = useState(false);
   const [fuzzyQuery, setFuzzyQuery] = useState("");
   const [fuzzyResults, setFuzzyResults] = useState([]);
@@ -44,16 +46,14 @@ export default function App() {
   const textareaRef = useRef(null);
   const isRepomapReqRef = useRef(false);
 
-  // --- INITIALIZATION & WEBSOCKET ---
+  // --- INITIALIZATION ---
   useEffect(() => {
     async function startBackendAndConnect() {
       try {
         if (import.meta.env.DEV) {
-          console.log("DEV MODE: Assuming Python is running manually on port 8002...");
           setTimeout(connectWebSocket, 500);
           return;
         } else {
-          console.log("Starting PROD sidecar...");
           const command = Command.sidecar("binaries/server");
           command.on('error', err => console.error(`[PYTHON] Error: "${err}"`));
           const child = await command.spawn();
@@ -62,7 +62,6 @@ export default function App() {
         setStatus("Connecting to core...");
         setTimeout(connectWebSocket, 1000);
       } catch (err) {
-        console.error("Failed to start backend:", err);
         setStatus(`Error: ${err}`);
       }
     }
@@ -70,35 +69,22 @@ export default function App() {
     function connectWebSocket() {
       const ws = new WebSocket("ws://127.0.0.1:8002/ws/chat");
       wsRef.current = ws;
-
-      ws.onopen = () => {
-        setIsConnected(true);
-        setStatus("Ready");
-      };
-
+      ws.onopen = () => { setIsConnected(true); setStatus("Ready"); };
       ws.onmessage = (event) => handleServerEvent(JSON.parse(event.data));
-
-      ws.onclose = () => {
-        setIsConnected(false);
-        setStatus("Disconnected. Retrying...");
-        setTimeout(connectWebSocket, 3000);
-      };
+      ws.onclose = () => { setIsConnected(false); setStatus("Disconnected. Retrying..."); setTimeout(connectWebSocket, 3000); };
     }
 
     startBackendAndConnect();
-
     return () => {
       if (wsRef.current) wsRef.current.close();
       if (childRef.current) childRef.current.kill();
     };
   }, []);
 
-  // Scroll to bottom dynamically
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chat]);
-
-  // Auto-resize textarea
+  // Scroll logic
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chat]);
+  
+  // Auto-resize input
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
@@ -109,24 +95,16 @@ export default function App() {
   // --- SERVER EVENT HANDLER ---
   function handleServerEvent(data: ServerEvent) {
     switch (data.type) {
-      case "CoreContextUpdated":
-        setActiveFiles(data.payload.active_files);
-        break;
-      case "ContextStatsUpdated":
-        setStats(data.payload);
-        break;
-      case "CoreAgenticTaskProgress":
-        setStatus(data.payload.message);
-        break;
+      case "CoreContextUpdated": setActiveFiles(data.payload.active_files); break;
+      case "ContextStatsUpdated": setStats(data.payload); break;
+      case "CoreAgenticTaskProgress": setStatus(data.payload.message); break;
       case "SystemMessage":
         if (isRepomapReqRef.current) {
           setRepomapContent(data.payload.message);
-          setIsGenerating(false);
-          setStatus("Ready");
+          setIsGenerating(false); setStatus("Ready");
         } else {
           setChat((prev) => [...prev, { role: "system", content: data.payload.message }]);
-          setIsGenerating(false);
-          setStatus("Ready");
+          setIsGenerating(false); setStatus("Ready");
         }
         break;
       case "CoreLLMChunkReceived":
@@ -137,7 +115,6 @@ export default function App() {
             const newChat = [...prev];
             const lastMsg = newChat[newChat.length - 1];
             const chunk = data.payload?.chunk || "";
-
             if (lastMsg && lastMsg.role === "assistant" && !lastMsg.isComplete) {
               newChat[newChat.length - 1] = { ...lastMsg, content: lastMsg.content + chunk };
             } else {
@@ -152,60 +129,34 @@ export default function App() {
           setChat((prev) => {
             const newChat = [...prev];
             const lastMsg = newChat[newChat.length - 1];
-            if (lastMsg && lastMsg.role === "assistant") {
-              newChat[newChat.length - 1] = { ...lastMsg, isComplete: true };
-            }
+            if (lastMsg && lastMsg.role === "assistant") newChat[newChat.length - 1] = { ...lastMsg, isComplete: true };
             return newChat;
           });
         }
-        setIsGenerating(false);
-        setStatus("Ready");
+        setIsGenerating(false); setStatus("Ready");
         setTimeout(() => textareaRef.current?.focus(), 100);
         break;
-      case "CoreUserFileApprovalRequested":
-        setApprovalReq(data.payload);
-        break;
+      case "CoreUserFileApprovalRequested": setApprovalReq(data.payload); break;
       case "FuzzySearchResults":
         setFuzzyResults(data.payload.files || []);
         setFuzzySelectedIndex(0);
         break;
-      default:
-        break;
     }
   }
 
-  // --- GUI ACTIONS (Replaces Slash Commands) ---
-  const sendHiddenCommand = (commandStr: string) => {
-    sendCommand(wsRef.current, { command: "chat", input: commandStr, mode: "ask" });
-  };
+  // --- UI COMMAND ACTIONS ---
+  const sendHiddenCommand = (cmd: string) => sendCommand(wsRef.current, { command: "chat", input: cmd, mode: "ask" });
 
   const handleAddFileClick = () => {
-    setShowFuzzySearch(true);
-    setFuzzyQuery("");
-    setFuzzyResults([]);
-    setFuzzySelectedIndex(0);
+    setShowFuzzySearch(true); setFuzzyQuery(""); setFuzzyResults([]); setFuzzySelectedIndex(0);
     sendCommand(wsRef.current, { command: "fuzzy_search_files", query: "" });
   };
-
-  const handleFuzzyQueryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const q = e.target.value;
-    setFuzzyQuery(q);
-    sendCommand(wsRef.current, { command: "fuzzy_search_files", query: q });
-  };
-
-  const handleSelectFuzzyFile = (file, closeMenu = true) => {
-    sendHiddenCommand(`/add ${file}`);
-    if (closeMenu) {
-      setShowFuzzySearch(false);
-    }
-  };
-
+  
   const handleRemoveFile = (file) => sendHiddenCommand(`/drop ${file}`);
   const handleResetSession = () => sendHiddenCommand(`/reset`);
   const handleCopyRepoMap = () => sendHiddenCommand(`/copy-repomap`);
   const handleCopyBuild = () => sendHiddenCommand(`/copy-build-message`);
 
-  // --- CORE ACTIONS ---
   async function handleOpenWorkspace() {
     try {
       const selectedPath = await open({ directory: true, multiple: false });
@@ -213,73 +164,43 @@ export default function App() {
         setWorkspace(selectedPath);
         sendCommand(wsRef.current, { command: "init_workspace", path: selectedPath as string });
       }
-    } catch (err) {
-      console.error("Failed to open workspace:", err);
-    }
+    } catch (err) { console.error(err); }
   }
 
   const fetchRepoMap = () => {
     if (isGenerating) return;
-    
     isRepomapReqRef.current = true;
     setRepomapContent("");
-    sendCommand(wsRef.current, { 
-      command: "chat", 
-      input: input.trim() || " ", 
-      mode: "repomap",
-      max_map_tokens: maxMapTokens 
-    });
-    
-    setIsGenerating(true);
-    setStatus("Generating RepoMap...");
+    sendCommand(wsRef.current, { command: "chat", input: " ", mode: "repomap", max_map_tokens: maxMapTokens });
+    setIsGenerating(true); setStatus("Generating RepoMap...");
   };
 
   const sendMessage = () => {
     if (!input.trim() || isGenerating) return;
-    
+    setMainView("chat"); // Auto-switch to chat view
     isRepomapReqRef.current = false;
     setChat((prev) => [...prev, { role: "user", content: input.trim() }]);
-    sendCommand(wsRef.current, { 
-      command: "chat", 
-      input: input.trim(), 
-      mode: mode as "ask" | "code" | "repomap" 
-    });
+    sendCommand(wsRef.current, { command: "chat", input: input.trim(), mode: mode as "ask" | "code" });
     
-    setInput("");
-    setIsGenerating(true);
-    setStatus("Generating response...");
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-    }
+    setInput(""); setIsGenerating(true); setStatus("Generating response...");
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
   };
 
   const handleCancel = () => {
     sendCommand(wsRef.current, { command: "cancel" });
-    setIsGenerating(false);
-    setStatus("Operation cancelled");
+    setIsGenerating(false); setStatus("Cancelled");
   };
 
   const handleApproval = (approved: boolean) => {
     if (!approvalReq) return;
     setChat((prev) => [...prev, { role: "user", content: approved ? "Approved file access." : "Denied file access." }]);
-    sendCommand(wsRef.current, {
-      command: "approval_response",
-      approval_id: approvalReq.approval_id,
-      approved: approved,
-    });
+    sendCommand(wsRef.current, { command: "approval_response", approval_id: approvalReq.approval_id, approved });
     setApprovalReq(null);
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
   };
 
   return (
     <div className="app-layout">
-      {/* --- SIDEBAR --- */}
+      {/* ================= SIDEBAR ================= */}
       <aside className="sidebar">
         <div className="sidebar-header">
           <div className="brand">
@@ -296,26 +217,11 @@ export default function App() {
           </button>
         </div>
 
-        <div className="sidebar-nav">
-          <button 
-            className={`nav-item ${mainView === 'chat' ? 'active' : ''}`} 
-            onClick={() => setMainView('chat')}
-          >
-            <MessageSquare size={16} /> Chat
-          </button>
-          <button 
-            className={`nav-item ${mainView === 'repomap' ? 'active' : ''}`} 
-            onClick={() => setMainView('repomap')}
-          >
-            <Map size={16} /> Repo Map
-          </button>
-        </div>
-
         <div className="context-section">
           <div className="section-header">
             <span className="section-title">Context ({activeFiles.length})</span>
             <button className="icon-btn-small" onClick={handleAddFileClick} title="Add files to context" disabled={!isConnected || isGenerating}>
-              <Plus size={14} />
+              <Plus size={16} />
             </button>
           </div>
           
@@ -324,7 +230,7 @@ export default function App() {
               <div className="empty-state">No files loaded.</div>
             ) : (
               activeFiles.map((f, i) => (
-                <div key={i} className="context-item group">
+                <div key={i} className="context-item">
                   <div className="context-item-name truncate" title={f}>
                     <FileCode2 size={14} className="file-icon" />
                     {f.split(/[/\\]/).pop()}
@@ -336,6 +242,10 @@ export default function App() {
               ))
             )}
           </div>
+          
+          <button className="reset-context-btn" onClick={handleResetSession} title="Clear all context files">
+            <RefreshCcw size={14} /> Reset Context
+          </button>
         </div>
 
         <div className="stats-card">
@@ -355,31 +265,40 @@ export default function App() {
         </div>
       </aside>
 
-      {/* --- MAIN CONTENT --- */}
+      {/* ================= MAIN AREA ================= */}
       <main className="main-area">
-        {/* TOP ACTION BAR */}
-        <header className="top-bar">
-          <div className="status-indicator">
-            <Activity size={14} className={isGenerating ? "spin-pulse" : "static"} />
-            <span className="status-text">{status}</span>
+        {/* TABS HEADER */}
+        <header className="tabs-header">
+          <div className="tabs-list">
+            <button className={`tab-btn ${mainView === 'chat' ? 'active' : ''}`} onClick={() => setMainView('chat')}>
+              <MessageSquare size={16} /> Chat
+            </button>
+            <button className={`tab-btn ${mainView === 'repomap' ? 'active' : ''}`} onClick={() => setMainView('repomap')}>
+              <Map size={16} /> Repo Map
+            </button>
           </div>
           
-          <div className="actions-menu">
-            <button className="action-btn" onClick={handleCopyRepoMap} title="Copy Repo Map" disabled={!workspace}>
-              <Map size={16} /> Map
-            </button>
-            <button className="action-btn" onClick={handleCopyBuild} title="Copy Build Messages">
-              <Clipboard size={16} /> Data
-            </button>
-            <button className="action-btn danger-hover" onClick={handleResetSession} title="Reset Session Context">
-              <RefreshCcw size={16} /> Reset
-            </button>
+          <div className="header-actions">
+            <div className="status-indicator">
+              <Activity size={14} className={isGenerating ? "spin-pulse" : "static"} />
+              <span className="status-text">{status}</span>
+            </div>
+            {mainView === 'chat' && (
+              <button className="action-btn" onClick={handleCopyBuild} title="Copy Build Messages">
+                <Clipboard size={14} /> Copy Data
+              </button>
+            )}
+            {mainView === 'repomap' && (
+              <button className="action-btn" onClick={handleCopyRepoMap} title="Copy Repo Map" disabled={!workspace}>
+                <Clipboard size={14} /> Copy Map
+              </button>
+            )}
           </div>
         </header>
 
-        {/* MAIN DISPLAY AREA */}
-        {mainView === "chat" ? (
-          <>
+        {/* SCROLLABLE VIEW CONTENT */}
+        <div className="view-content-wrapper">
+          {mainView === "chat" ? (
             <div className="chat-scroll-area">
               {chat.length === 0 && (
                 <div className="welcome-screen">
@@ -390,7 +309,6 @@ export default function App() {
                   <p>Add files to your context and start exploring your code.</p>
                 </div>
               )}
-
               <div className="messages-container">
                 {chat.map((msg, i) => (
                   <div key={i} className={`message-row ${msg.role}`}>
@@ -407,13 +325,7 @@ export default function App() {
                           </ReactMarkdown>
                         </div>
                       ) : (
-                         <pre className="plain-text" style={{ 
-                           whiteSpace: "pre-wrap", 
-                           fontFamily: msg.content.includes("⋮") ? "monospace" : "inherit", 
-                           margin: 0 
-                         }}>
-                           {msg.content}
-                         </pre>
+                         <p className="plain-text">{msg.content}</p>
                       )}
                     </div>
                   </div>
@@ -421,144 +333,109 @@ export default function App() {
                 <div ref={chatEndRef} />
               </div>
             </div>
-
-            {/* INPUT SECTION */}
-            <div className="input-wrapper">
-              <div className="input-box">
-                <div className="mode-toggle">
-                  <button 
-                    className={`mode-btn ${mode === "ask" ? "active" : ""}`} 
-                    onClick={() => setMode("ask")} title="Ask questions without editing"
-                    disabled={isGenerating}
-                  >
-                    <MessageSquare size={14} /> Ask
-                  </button>
-                  <button 
-                    className={`mode-btn ${mode === "code" ? "active" : ""}`} 
-                    onClick={() => setMode("code")} title="Allow the assistant to edit code"
-                    disabled={isGenerating}
-                  >
-                    <Code size={14} /> Code
+          ) : (
+            <div className="repomap-main-view">
+              <div className="repomap-header-controls">
+                <div className="repomap-title">
+                  <Map size={20} className="brand-icon" /> Repository Map
+                </div>
+                <div className="repomap-controls-right">
+                  <div className="repomap-settings">
+                    <span className="stat-label">Tokens: {maxMapTokens}</span>
+                    <input 
+                      type="range" min="1024" max="16384" step="512" 
+                      value={maxMapTokens} onChange={(e) => setMaxMapTokens(Number(e.target.value))}
+                      className="styled-slider" title="Max tokens for Repo Map"
+                    />
+                  </div>
+                  <button className="btn-primary" onClick={fetchRepoMap} disabled={!isConnected || isGenerating}>
+                    <RefreshCcw size={14} className={isGenerating && isRepomapReqRef.current ? "spin-pulse" : ""} />
+                    Generate Map
                   </button>
                 </div>
-
-                <textarea
-                  ref={textareaRef}
-                  className="chat-input"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder={isConnected ? "Message Frugaast... (Shift+Enter for new line)" : "Connecting..."}
-                  disabled={!isConnected || approvalReq !== null || isGenerating}
-                  autoFocus
-                  rows={1}
-                />
-
-                <div className="input-actions">
-                  {isGenerating ? (
-                    <button type="button" className="send-btn stop" onClick={handleCancel} title="Stop Generation">
-                      <Square size={16} fill="currentColor" />
-                    </button>
-                  ) : (
-                    <button type="button" className="send-btn" onClick={sendMessage} disabled={!isConnected || !input.trim()} title="Send">
-                      <Send size={16} />
-                    </button>
-                  )}
-                </div>
+              </div>
+              <div className="repomap-content-area">
+                {repomapContent ? (
+                  <pre className="repomap-code">{repomapContent}</pre>
+                ) : (
+                  <div className="empty-state" style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none' }}>
+                    Click "Generate Map" to analyze your workspace architecture.
+                  </div>
+                )}
               </div>
             </div>
-          </>
-        ) : (
-          <div className="repomap-main-view">
-            <div className="repomap-header">
-              <div className="repomap-title">
-                <Map size={20} className="brand-icon" />
-                Repository Map
-              </div>
-              <div className="repomap-controls">
-                <div className="repomap-settings">
-                  <span className="stat-label">Tokens: {maxMapTokens}</span>
-                  <input 
-                    type="range" 
-                    min="1024" max="16384" step="512" 
-                    value={maxMapTokens} 
-                    onChange={(e) => setMaxMapTokens(Number(e.target.value))}
-                    className="styled-slider"
-                    title="Max tokens for Repo Map"
-                  />
-                </div>
-                <button 
-                  className="btn-primary" 
-                  onClick={fetchRepoMap} 
-                  disabled={!isConnected || isGenerating}
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-                >
-                  <RefreshCcw size={14} className={isGenerating && isRepomapReqRef.current ? "spin-pulse" : ""} />
-                  Generate Map
+          )}
+        </div>
+
+        {/* ================= OMNIPRESENT GLOBAL INPUT ================= */}
+        <div className="global-input-wrapper">
+          <div className="input-box">
+            <div className="mode-toggle">
+              <button className={`mode-btn ${mode === "ask" ? "active" : ""}`} onClick={() => setMode("ask")} disabled={isGenerating}>
+                <MessageSquare size={14} /> Ask
+              </button>
+              <button className={`mode-btn ${mode === "code" ? "active" : ""}`} onClick={() => setMode("code")} disabled={isGenerating}>
+                <Code size={14} /> Code
+              </button>
+            </div>
+
+            <textarea
+              ref={textareaRef}
+              className="chat-input"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+              }}
+              placeholder={isConnected ? "Message Frugaast... (Shift+Enter for new line)" : "Connecting..."}
+              disabled={!isConnected || approvalReq !== null || (isGenerating && isRepomapReqRef.current)}
+              autoFocus
+              rows={1}
+            />
+
+            <div className="input-actions">
+              {isGenerating && !isRepomapReqRef.current ? (
+                <button type="button" className="send-btn stop" onClick={handleCancel} title="Stop Generation">
+                  <Square size={14} fill="currentColor" />
                 </button>
-              </div>
-            </div>
-            <div className="repomap-content-area">
-              {repomapContent ? (
-                <pre className="repomap-code">{repomapContent}</pre>
               ) : (
-                <div className="empty-state" style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none' }}>
-                  Click "Generate Map" to analyze your workspace.
-                </div>
+                <button type="button" className="send-btn" onClick={sendMessage} disabled={!isConnected || !input.trim()} title="Send">
+                  <Send size={14} />
+                </button>
               )}
             </div>
           </div>
-        )}
+        </div>
       </main>
 
-      {/* --- FUZZY SEARCH MODAL --- */}
+      {/* ================= MODALS ================= */}
+      {/* Fuzzy Search */}
       {showFuzzySearch && (
         <div className="modal-backdrop" onClick={() => setShowFuzzySearch(false)}>
           <div className="modal-panel fuzzy-panel" onClick={e => e.stopPropagation()}>
             <div className="fuzzy-header">
               <Search size={18} className="fuzzy-icon" />
               <input 
-                type="text" 
-                className="fuzzy-input" 
-                placeholder="Search files by name..." 
-                value={fuzzyQuery}
-                onChange={handleFuzzyQueryChange}
+                type="text" className="fuzzy-input" placeholder="Search files by name..." 
+                value={fuzzyQuery} onChange={(e) => {
+                  setFuzzyQuery(e.target.value);
+                  sendCommand(wsRef.current, { command: "fuzzy_search_files", query: e.target.value });
+                }}
                 onKeyDown={(e) => {
-                  if (e.key === "Escape") {
-                    setShowFuzzySearch(false);
-                  } else if (e.key === "ArrowDown") {
-                    e.preventDefault();
-                    setFuzzySelectedIndex((prev) => Math.min(prev + 1, Math.max(0, fuzzyResults.length - 1)));
-                  } else if (e.key === "ArrowUp") {
-                    e.preventDefault();
-                    setFuzzySelectedIndex((prev) => Math.max(prev - 1, 0));
-                  } else if (e.key === "Enter") {
-                    e.preventDefault();
-                    if (fuzzyResults[fuzzySelectedIndex]) {
-                      handleSelectFuzzyFile(fuzzyResults[fuzzySelectedIndex], true);
-                    }
-                  } else if (e.key === " ") {
-                    e.preventDefault();
-                    if (fuzzyResults[fuzzySelectedIndex]) {
-                      handleSelectFuzzyFile(fuzzyResults[fuzzySelectedIndex], false);
-                    }
-                  }
+                  if (e.key === "Escape") setShowFuzzySearch(false);
+                  else if (e.key === "ArrowDown") { e.preventDefault(); setFuzzySelectedIndex(p => Math.min(p + 1, Math.max(0, fuzzyResults.length - 1))); }
+                  else if (e.key === "ArrowUp") { e.preventDefault(); setFuzzySelectedIndex(p => Math.max(p - 1, 0)); }
+                  else if (e.key === "Enter" && fuzzyResults[fuzzySelectedIndex]) { e.preventDefault(); sendHiddenCommand(`/add ${fuzzyResults[fuzzySelectedIndex]}`); setShowFuzzySearch(false); }
                 }}
                 autoFocus
               />
-              <button className="icon-btn-small" onClick={() => setShowFuzzySearch(false)}>
-                <X size={16} />
-              </button>
+              <button className="icon-btn-small" onClick={() => setShowFuzzySearch(false)}><X size={16} /></button>
             </div>
             <div className="fuzzy-results">
-              {fuzzyResults.length === 0 ? (
-                <div className="fuzzy-empty">No files found.</div>
-              ) : (
+              {fuzzyResults.length === 0 ? <div className="fuzzy-empty">No files found.</div> : (
                 fuzzyResults.map((f, i) => (
-                  <div 
-                    key={i} 
-                    className={`fuzzy-item ${i === fuzzySelectedIndex ? 'selected' : ''}`} 
-                    onClick={() => handleSelectFuzzyFile(f)}
+                  <div key={i} className={`fuzzy-item ${i === fuzzySelectedIndex ? 'selected' : ''}`} 
+                    onClick={() => { sendHiddenCommand(`/add ${f}`); setShowFuzzySearch(false); }}
                     onMouseEnter={() => setFuzzySelectedIndex(i)}
                   >
                     <FileCode2 size={14} className="file-icon" />
@@ -571,7 +448,7 @@ export default function App() {
         </div>
       )}
 
-      {/* --- APPROVAL MODAL --- */}
+      {/* Access Approval */}
       {approvalReq && (
         <div className="modal-backdrop">
           <div className="modal-panel">
