@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useApp } from "../../context/AppContext";
 import { open } from "@tauri-apps/plugin-dialog";
-import { FolderOpen, Sparkles, FileCode2, Plus, Trash2, RefreshCcw } from "lucide-react";
+import { FolderOpen, Sparkles, FileCode2, Plus, Trash2, RefreshCcw, List, ListTree } from "lucide-react";
 import "./Sidebar.css";
 
 export const Sidebar = () => {
   const [sidebarWidth, setSidebarWidth] = useState(280);
   const [isResizing, setIsResizing] = useState(false);
+  const [viewMode, setViewMode] = useState<'flat' | 'tree'>('flat');
 
   useEffect(() => {
     if (!isResizing) return;
@@ -45,6 +46,57 @@ export const Sidebar = () => {
     searchFiles("");
   };
 
+  const buildTree = (files: string[]) => {
+    const root: any = {};
+    files.forEach(file => {
+      const parts = file.replace(/\\/g, '/').split('/').filter(Boolean);
+      let current = root;
+      let currentPath = '';
+      parts.forEach((part, index) => {
+        currentPath += (currentPath ? '/' : '') + part;
+        const isFile = index === parts.length - 1;
+        if (!current[part]) {
+          current[part] = {
+            name: part,
+            path: isFile ? file : null,
+            folderPath: isFile ? null : currentPath + '/',
+            children: {}
+          };
+        }
+        current = current[part].children;
+      });
+    });
+    return root;
+  };
+
+  const renderTree = (nodes: any, depth = 0) => {
+    return Object.values(nodes).map((node: any, i) => (
+      <React.Fragment key={`${depth}-${i}`}>
+        <div 
+          className={node.path ? "context-item" : "context-item folder"} 
+          style={{ paddingLeft: depth > 0 ? `${depth * 12 + 10}px` : undefined }}
+        >
+          <div className="context-item-name truncate" title={node.path || node.folderPath}>
+            {node.path ? (
+              <FileCode2 size={14} className="file-icon" />
+            ) : (
+              <FolderOpen size={14} className="folder-icon file-icon" />
+            )}
+            {node.name}
+          </div>
+          <button 
+            className="remove-btn" 
+            onClick={() => sendHiddenCommand(`/drop ${node.path || node.folderPath}`)} 
+            title={`Remove ${node.path ? 'file' : 'folder'}`}
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+        {Object.keys(node.children).length > 0 && renderTree(node.children, depth + 1)}
+      </React.Fragment>
+    ));
+  };
+
   return (
     <aside className="sidebar" style={{ width: sidebarWidth }}>
       <div className="sidebar-header">
@@ -65,15 +117,24 @@ export const Sidebar = () => {
       <div className="context-section">
         <div className="section-header">
           <span className="section-title">Context ({activeFiles.length})</span>
-          <button className="icon-btn-small" onClick={handleAddFileClick} title="Add files to context" disabled={!isConnected || isGenerating}>
-            <Plus size={16} />
-          </button>
+          <div style={{ display: 'flex', gap: '4px' }}>
+            <button 
+              className="icon-btn-small" 
+              onClick={() => setViewMode(v => v === 'flat' ? 'tree' : 'flat')} 
+              title={`Switch to ${viewMode === 'flat' ? 'tree' : 'flat'} view`}
+            >
+              {viewMode === 'flat' ? <ListTree size={16} /> : <List size={16} />}
+            </button>
+            <button className="icon-btn-small" onClick={handleAddFileClick} title="Add files to context" disabled={!isConnected || isGenerating}>
+              <Plus size={16} />
+            </button>
+          </div>
         </div>
         
         <div className="context-list">
           {activeFiles.length === 0 ? (
             <div className="empty-state">No files loaded.</div>
-          ) : (
+          ) : viewMode === 'flat' ? (
             activeFiles.map((f, i) => (
               <div key={i} className="context-item">
                 <div className="context-item-name truncate" title={f}>
@@ -85,6 +146,8 @@ export const Sidebar = () => {
                 </button>
               </div>
             ))
+          ) : (
+            renderTree(buildTree(activeFiles))
           )}
         </div>
         
