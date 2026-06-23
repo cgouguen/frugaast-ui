@@ -24,6 +24,7 @@ export default function App() {
   const [mode, setMode] = useState("code");
   const [maxMapTokens, setMaxMapTokens] = useState(4096);
   const [repomapContent, setRepomapContent] = useState("");
+  const [mainView, setMainView] = useState("chat"); // 'chat' or 'repomap'
   
   // Context & Approvals
   const [activeFiles, setActiveFiles] = useState([]);
@@ -117,15 +118,19 @@ export default function App() {
         setStatus(data.payload.message);
         break;
       case "SystemMessage":
-        setChat((prev) => [...prev, { role: "system", content: data.payload.message }]);
-        setIsGenerating(false);
-        setStatus("Ready");
+        if (isRepomapReqRef.current) {
+          setRepomapContent(data.payload.message);
+          setIsGenerating(false);
+          setStatus("Ready");
+        } else {
+          setChat((prev) => [...prev, { role: "system", content: data.payload.message }]);
+          setIsGenerating(false);
+          setStatus("Ready");
+        }
         break;
       case "CoreLLMChunkReceived":
         if (isRepomapReqRef.current) {
           setRepomapContent((prev) => prev + (data.payload?.chunk || ""));
-          setIsGenerating(false);
-          setStatus("Ready");
         } else {
           setChat((prev) => {
             const newChat = [...prev];
@@ -225,7 +230,7 @@ export default function App() {
       command: "chat", 
       input: input.trim() || " ", 
       mode: "repomap",
-      max_map_token: maxMapTokens 
+      max_map_tokens: maxMapTokens 
     };
     
     isRepomapReqRef.current = true;
@@ -297,37 +302,20 @@ export default function App() {
             <span className="truncate">{workspace ? workspace.split(/[/\\]/).pop() : "Open Workspace"}</span>
           </button>
         </div>
-        
-        <div className="repomap-sidebar-section">
-          <div className="section-header">
-            <span className="section-title">Repo Map</span>
-            <button className="icon-btn-small" onClick={fetchRepoMap} title="Generate map based on chat input" disabled={!isConnected || isGenerating}>
-              <RefreshCcw size={14} />
-            </button>
-          </div>
-          
-          <div className="repomap-sidebar-settings">
-            <div className="stat-row">
-              <span className="stat-label">Token Limit</span>
-              <span className="stat-value">{maxMapTokens}</span>
-            </div>
-            <input 
-              type="range" 
-              min="1024" max="16384" step="512" 
-              value={maxMapTokens} 
-              onChange={(e) => setMaxMapTokens(Number(e.target.value))}
-              className="styled-slider"
-              title="Max tokens for Repo Map"
-            />
-          </div>
-          
-          <div className="repomap-sidebar-content">
-            {repomapContent ? (
-              <pre className="repomap-code">{repomapContent}</pre>
-            ) : (
-              <div className="empty-state">Click refresh to generate map.</div>
-            )}
-          </div>
+
+        <div className="sidebar-nav">
+          <button 
+            className={`nav-item ${mainView === 'chat' ? 'active' : ''}`} 
+            onClick={() => setMainView('chat')}
+          >
+            <MessageSquare size={16} /> Chat
+          </button>
+          <button 
+            className={`nav-item ${mainView === 'repomap' ? 'active' : ''}`} 
+            onClick={() => setMainView('repomap')}
+          >
+            <Map size={16} /> Repo Map
+          </button>
         </div>
 
         <div className="context-section">
@@ -397,93 +385,137 @@ export default function App() {
         </header>
 
         {/* MAIN DISPLAY AREA */}
-        <div className="chat-scroll-area">
-          {chat.length === 0 && (
-            <div className="welcome-screen">
-              <div className="welcome-icon-wrapper">
-                <Terminal size={40} />
-              </div>
-              <h2>Ready to build.</h2>
-              <p>Add files to your context and start exploring your code.</p>
-            </div>
-          )}
-
-          <div className="messages-container">
-            {chat.map((msg, i) => (
-              <div key={i} className={`message-row ${msg.role}`}>
-                <div className="message-avatar">
-                  {msg.role === "assistant" ? <Bot size={18} /> : msg.role === "user" ? <User size={18} /> : <Settings2 size={18} />}
+        {mainView === "chat" ? (
+          <>
+            <div className="chat-scroll-area">
+              {chat.length === 0 && (
+                <div className="welcome-screen">
+                  <div className="welcome-icon-wrapper">
+                    <Terminal size={40} />
+                  </div>
+                  <h2>Ready to build.</h2>
+                  <p>Add files to your context and start exploring your code.</p>
                 </div>
-                <div className="message-content">
-                  {msg.role === "assistant" ? (
-                    <div className="markdown-prose">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {msg.content.includes("⋮") && !msg.content.includes("```")
-                          ? `\`\`\`text\n${msg.content}\n\`\`\``
-                          : msg.content}
-                      </ReactMarkdown>
+              )}
+
+              <div className="messages-container">
+                {chat.map((msg, i) => (
+                  <div key={i} className={`message-row ${msg.role}`}>
+                    <div className="message-avatar">
+                      {msg.role === "assistant" ? <Bot size={18} /> : msg.role === "user" ? <User size={18} /> : <Settings2 size={18} />}
                     </div>
+                    <div className="message-content">
+                      {msg.role === "assistant" ? (
+                        <div className="markdown-prose">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {msg.content.includes("⋮") && !msg.content.includes("```")
+                              ? `\`\`\`text\n${msg.content}\n\`\`\``
+                              : msg.content}
+                          </ReactMarkdown>
+                        </div>
+                      ) : (
+                         <pre className="plain-text" style={{ 
+                           whiteSpace: "pre-wrap", 
+                           fontFamily: msg.content.includes("⋮") ? "monospace" : "inherit", 
+                           margin: 0 
+                         }}>
+                           {msg.content}
+                         </pre>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                <div ref={chatEndRef} />
+              </div>
+            </div>
+
+            {/* INPUT SECTION */}
+            <div className="input-wrapper">
+              <div className="input-box">
+                <div className="mode-toggle">
+                  <button 
+                    className={`mode-btn ${mode === "ask" ? "active" : ""}`} 
+                    onClick={() => setMode("ask")} title="Ask questions without editing"
+                    disabled={isGenerating}
+                  >
+                    <MessageSquare size={14} /> Ask
+                  </button>
+                  <button 
+                    className={`mode-btn ${mode === "code" ? "active" : ""}`} 
+                    onClick={() => setMode("code")} title="Allow the assistant to edit code"
+                    disabled={isGenerating}
+                  >
+                    <Code size={14} /> Code
+                  </button>
+                </div>
+
+                <textarea
+                  ref={textareaRef}
+                  className="chat-input"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={isConnected ? "Message Frugaast... (Shift+Enter for new line)" : "Connecting..."}
+                  disabled={!isConnected || approvalReq !== null || isGenerating}
+                  autoFocus
+                  rows={1}
+                />
+
+                <div className="input-actions">
+                  {isGenerating ? (
+                    <button type="button" className="send-btn stop" onClick={handleCancel} title="Stop Generation">
+                      <Square size={16} fill="currentColor" />
+                    </button>
                   ) : (
-                     <pre className="plain-text" style={{ 
-                       whiteSpace: "pre-wrap", 
-                       fontFamily: msg.content.includes("⋮") ? "monospace" : "inherit", 
-                       margin: 0 
-                     }}>
-                       {msg.content}
-                     </pre>
+                    <button type="button" className="send-btn" onClick={sendMessage} disabled={!isConnected || !input.trim()} title="Send">
+                      <Send size={16} />
+                    </button>
                   )}
                 </div>
               </div>
-            ))}
-            <div ref={chatEndRef} />
-          </div>
-        </div>
-
-        {/* INPUT SECTION */}
-        <div className="input-wrapper">
-          <div className="input-box">
-            <div className="mode-toggle">
-              <button 
-                className={`mode-btn ${mode === "ask" ? "active" : ""}`} 
-                onClick={() => setMode("ask")} title="Ask questions without editing"
-                disabled={isGenerating}
-              >
-                <MessageSquare size={14} /> Ask
-              </button>
-              <button 
-                className={`mode-btn ${mode === "code" ? "active" : ""}`} 
-                onClick={() => setMode("code")} title="Allow the assistant to edit code"
-                disabled={isGenerating}
-              >
-                <Code size={14} /> Code
-              </button>
             </div>
-
-            <textarea
-              ref={textareaRef}
-              className="chat-input"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={isConnected ? "Message Frugaast... (Shift+Enter for new line)" : "Connecting..."}
-              disabled={!isConnected || approvalReq !== null || isGenerating}
-              autoFocus
-              rows={1}
-            />
-
-            <div className="input-actions">
-              {isGenerating ? (
-                <button type="button" className="send-btn stop" onClick={handleCancel} title="Stop Generation">
-                  <Square size={16} fill="currentColor" />
+          </>
+        ) : (
+          <div className="repomap-main-view">
+            <div className="repomap-header">
+              <div className="repomap-title">
+                <Map size={20} className="brand-icon" />
+                Repository Map
+              </div>
+              <div className="repomap-controls">
+                <div className="repomap-settings">
+                  <span className="stat-label">Tokens: {maxMapTokens}</span>
+                  <input 
+                    type="range" 
+                    min="1024" max="16384" step="512" 
+                    value={maxMapTokens} 
+                    onChange={(e) => setMaxMapTokens(Number(e.target.value))}
+                    className="styled-slider"
+                    title="Max tokens for Repo Map"
+                  />
+                </div>
+                <button 
+                  className="btn-primary" 
+                  onClick={fetchRepoMap} 
+                  disabled={!isConnected || isGenerating}
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                >
+                  <RefreshCcw size={14} className={isGenerating && isRepomapReqRef.current ? "spin-pulse" : ""} />
+                  Generate Map
                 </button>
+              </div>
+            </div>
+            <div className="repomap-content-area">
+              {repomapContent ? (
+                <pre className="repomap-code">{repomapContent}</pre>
               ) : (
-                <button type="button" className="send-btn" onClick={sendMessage} disabled={!isConnected || !input.trim()} title="Send">
-                  <Send size={16} />
-                </button>
+                <div className="empty-state" style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none' }}>
+                  Click "Generate Map" to analyze your workspace.
+                </div>
               )}
             </div>
           </div>
-        </div>
+        )}
       </main>
 
       {/* --- FUZZY SEARCH MODAL --- */}
