@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Command } from "@tauri-apps/plugin-shell";
 import { open } from "@tauri-apps/plugin-dialog";
+import { sendCommand, ServerEvent } from "./api";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { 
@@ -106,7 +107,7 @@ export default function App() {
   }, [input]);
 
   // --- SERVER EVENT HANDLER ---
-  function handleServerEvent(data) {
+  function handleServerEvent(data: ServerEvent) {
     switch (data.type) {
       case "CoreContextUpdated":
         setActiveFiles(data.payload.active_files);
@@ -174,10 +175,8 @@ export default function App() {
   }
 
   // --- GUI ACTIONS (Replaces Slash Commands) ---
-  const sendHiddenCommand = (commandStr) => {
-    if (!wsRef.current) return;
-    const payload = { command: "chat", input: commandStr, mode: "ask" };
-    wsRef.current.send(JSON.stringify(payload));
+  const sendHiddenCommand = (commandStr: string) => {
+    sendCommand(wsRef.current, { command: "chat", input: commandStr, mode: "ask" });
   };
 
   const handleAddFileClick = () => {
@@ -185,17 +184,13 @@ export default function App() {
     setFuzzyQuery("");
     setFuzzyResults([]);
     setFuzzySelectedIndex(0);
-    if (wsRef.current) {
-      wsRef.current.send(JSON.stringify({ command: "fuzzy_search_files", query: "" }));
-    }
+    sendCommand(wsRef.current, { command: "fuzzy_search_files", query: "" });
   };
 
-  const handleFuzzyQueryChange = (e) => {
+  const handleFuzzyQueryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const q = e.target.value;
     setFuzzyQuery(q);
-    if (wsRef.current) {
-      wsRef.current.send(JSON.stringify({ command: "fuzzy_search_files", query: q }));
-    }
+    sendCommand(wsRef.current, { command: "fuzzy_search_files", query: q });
   };
 
   const handleSelectFuzzyFile = (file, closeMenu = true) => {
@@ -214,9 +209,9 @@ export default function App() {
   async function handleOpenWorkspace() {
     try {
       const selectedPath = await open({ directory: true, multiple: false });
-      if (selectedPath && wsRef.current) {
+      if (selectedPath) {
         setWorkspace(selectedPath);
-        wsRef.current.send(JSON.stringify({ command: "init_workspace", path: selectedPath }));
+        sendCommand(wsRef.current, { command: "init_workspace", path: selectedPath as string });
       }
     } catch (err) {
       console.error("Failed to open workspace:", err);
@@ -224,31 +219,31 @@ export default function App() {
   }
 
   const fetchRepoMap = () => {
-    if (!wsRef.current || isGenerating) return;
+    if (isGenerating) return;
     
-    const payload = { 
+    isRepomapReqRef.current = true;
+    setRepomapContent("");
+    sendCommand(wsRef.current, { 
       command: "chat", 
       input: input.trim() || " ", 
       mode: "repomap",
       max_map_tokens: maxMapTokens 
-    };
-    
-    isRepomapReqRef.current = true;
-    setRepomapContent("");
-    wsRef.current.send(JSON.stringify(payload));
+    });
     
     setIsGenerating(true);
     setStatus("Generating RepoMap...");
   };
 
   const sendMessage = () => {
-    if (!input.trim() || !wsRef.current || isGenerating) return;
-    
-    const payload = { command: "chat", input: input.trim(), mode };
+    if (!input.trim() || isGenerating) return;
     
     isRepomapReqRef.current = false;
     setChat((prev) => [...prev, { role: "user", content: input.trim() }]);
-    wsRef.current.send(JSON.stringify(payload));
+    sendCommand(wsRef.current, { 
+      command: "chat", 
+      input: input.trim(), 
+      mode: mode as "ask" | "code" | "repomap" 
+    });
     
     setInput("");
     setIsGenerating(true);
@@ -259,21 +254,19 @@ export default function App() {
   };
 
   const handleCancel = () => {
-    if (wsRef.current) {
-      wsRef.current.send(JSON.stringify({ command: "cancel" }));
-      setIsGenerating(false);
-      setStatus("Operation cancelled");
-    }
+    sendCommand(wsRef.current, { command: "cancel" });
+    setIsGenerating(false);
+    setStatus("Operation cancelled");
   };
 
-  const handleApproval = (approved) => {
-    if (!wsRef.current || !approvalReq) return;
+  const handleApproval = (approved: boolean) => {
+    if (!approvalReq) return;
     setChat((prev) => [...prev, { role: "user", content: approved ? "Approved file access." : "Denied file access." }]);
-    wsRef.current.send(JSON.stringify({
+    sendCommand(wsRef.current, {
       command: "approval_response",
       approval_id: approvalReq.approval_id,
       approved: approved,
-    }));
+    });
     setApprovalReq(null);
   };
 
