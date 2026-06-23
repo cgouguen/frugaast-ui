@@ -15,13 +15,42 @@ export const GlobalInput = () => {
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const lastAutocompletePrefix = useRef<string | null>(null);
 
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 300)}px`;
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+      if (overlayRef.current) {
+        overlayRef.current.style.height = textareaRef.current.style.height;
+      }
     }
   }, [input]);
+
+  const renderHighlightedText = (text: string) => {
+    if (!text) return null;
+    const parts = text.split(/(```[\s\S]*?```|`[^`]*`|^#+ .*?$)/gm);
+    
+    const elements = parts.map((part, index) => {
+      if (!part) return null;
+      if (part.startsWith('```') && part.endsWith('```') && part.length >= 6) {
+        return <span key={index} className="syntax-code-block">{part}</span>;
+      } else if (part.startsWith('`') && part.endsWith('`') && part.length >= 2) {
+        return <span key={index} className="syntax-inline-code">{part}</span>;
+      } else if (part.match(/^#+ /)) {
+        return <span key={index} className="syntax-heading">{part}</span>;
+      } else {
+        return <span key={index}>{part}</span>;
+      }
+    });
+
+    if (text.endsWith('\n')) {
+      elements.push(<span key="trailing"> </span>);
+    }
+    
+    return elements;
+  };
 
   // Focus textarea when a response completes
   useEffect(() => {
@@ -32,14 +61,28 @@ export const GlobalInput = () => {
 
   const checkAutocomplete = (text: string, cursorPosition: number) => {
     const textBeforeCursor = text.slice(0, cursorPosition);
-    const match = textBeforeCursor.match(/(?:^|\s)@([^\s]*)$/);
+    const match = textBeforeCursor.match(/(?:^|\s)(`?)([^\s`]*)$/);
+    
     if (match) {
-      fetchAutocomplete(match[1]);
-      setShowAutocomplete(true);
-    } else {
-      setShowAutocomplete(false);
+      const hasBacktick = match[1] === '`';
+      const prefix = match[2];
+      
+      if (hasBacktick || prefix.length > 4) {
+        if (prefix !== lastAutocompletePrefix.current) {
+          setSelectedIndex(0);
+          lastAutocompletePrefix.current = prefix;
+          fetchAutocomplete(prefix);
+        }
+        setShowAutocomplete(true);
+        return;
+      }
+    }
+    
+    if (lastAutocompletePrefix.current !== null) {
+      lastAutocompletePrefix.current = null;
       clearAutocomplete();
     }
+    setShowAutocomplete(false);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -52,10 +95,16 @@ export const GlobalInput = () => {
     const textBeforeCursor = input.slice(0, cursorPosition);
     const textAfterCursor = input.slice(cursorPosition);
     
-    const match = textBeforeCursor.match(/(?:^|\s)@([^\s]*)$/);
+    const match = textBeforeCursor.match(/(?:^|\s)(`?)([^\s`]*)$/);
     if (match) {
-      const atIndex = textBeforeCursor.lastIndexOf('@');
-      const newBefore = textBeforeCursor.slice(0, atIndex) + "@" + symbol + " ";
+      const hasBacktick = match[1] === '`';
+      const prefix = match[2];
+      
+      const replaceStartIndex = hasBacktick 
+        ? textBeforeCursor.lastIndexOf('`')
+        : cursorPosition - prefix.length;
+        
+      const newBefore = textBeforeCursor.slice(0, replaceStartIndex) + "`" + symbol + "` ";
       setInput(newBefore + textAfterCursor);
       
       setTimeout(() => {
@@ -109,32 +158,21 @@ export const GlobalInput = () => {
     if (textareaRef.current) textareaRef.current.style.height = "auto";
   };
 
-  // Reset selected index when results change
-  useEffect(() => {
-    setSelectedIndex(0);
-  }, [autocompleteResults]);
-
   return (
     <div className="global-input-wrapper">
       <div className="input-box">
-        {showAutocomplete && (
+        {showAutocomplete && autocompleteResults.length > 0 && (
           <div className="autocomplete-popup">
-            {autocompleteResults.length > 0 ? (
-              autocompleteResults.map((result, index) => (
-                <div 
-                  key={result} 
-                  className={`autocomplete-item ${index === selectedIndex ? 'selected' : ''}`}
-                  onClick={() => insertAutocomplete(result)}
-                  onMouseEnter={() => setSelectedIndex(index)}
-                >
-                  {result}
-                </div>
-              ))
-            ) : (
-              <div className="autocomplete-item" style={{ opacity: 0.6, cursor: 'default' }}>
-                Loading symbols...
+            {autocompleteResults.map((result, index) => (
+              <div 
+                key={result} 
+                className={`autocomplete-item ${index === selectedIndex ? 'selected' : ''}`}
+                onClick={() => insertAutocomplete(result)}
+                onMouseEnter={() => setSelectedIndex(index)}
+              >
+                {result}
               </div>
-            )}
+            ))}
           </div>
         )}
         <div className="mode-toggle">
@@ -146,19 +184,27 @@ export const GlobalInput = () => {
           </button>
         </div>
 
-        <textarea
-          ref={textareaRef}
-          className="chat-input"
-          value={input}
-          onChange={handleInputChange}
-          onClick={(e) => checkAutocomplete(e.currentTarget.value, e.currentTarget.selectionStart)}
-          onKeyUp={(e) => checkAutocomplete(e.currentTarget.value, e.currentTarget.selectionStart)}
-          onKeyDown={onKeyDown}
-          placeholder={isConnected ? "Message Frugaast... (@ for symbols, Shift+Enter for newline)" : "Connecting..."}
-          disabled={!isConnected || approvalReq !== null || (isGenerating && isRepomapReq)}
-          autoFocus
-          rows={1}
-        />
+        <div className="input-wrapper">
+          <div className="input-container">
+            <div className="highlight-overlay" ref={overlayRef} aria-hidden="true">
+              {renderHighlightedText(input)}
+            </div>
+            <textarea
+              ref={textareaRef}
+              className="chat-input"
+              value={input}
+              onChange={handleInputChange}
+              onClick={(e) => checkAutocomplete(e.currentTarget.value, e.currentTarget.selectionStart)}
+              onKeyUp={(e) => checkAutocomplete(e.currentTarget.value, e.currentTarget.selectionStart)}
+              onKeyDown={onKeyDown}
+              placeholder={isConnected ? "Message Frugaast... (` for symbols, Shift+Enter for newline)" : "Connecting..."}
+              disabled={!isConnected || approvalReq !== null || (isGenerating && isRepomapReq)}
+              autoFocus
+              rows={1}
+              spellCheck={false}
+            />
+          </div>
+        </div>
 
         <div className="input-actions">
           {isGenerating && !isRepomapReq ? (
