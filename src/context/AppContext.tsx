@@ -32,6 +32,9 @@ interface AppContextType {
   handleCancel: () => void;
   handleApproval: (approved: boolean) => void;
   searchFiles: (query: string) => void;
+  autocompleteResults: string[];
+  fetchAutocomplete: (input: string) => void;
+  clearAutocomplete: () => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -53,6 +56,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   
   const [showFuzzySearch, setShowFuzzySearch] = useState(false);
   const [fuzzyResults, setFuzzyResults] = useState<string[]>([]);
+  const [autocompleteResults, setAutocompleteResults] = useState<string[]>([]);
 
   const wsRef = useRef<WebSocket | null>(null);
   const childRef = useRef<any>(null);
@@ -138,6 +142,9 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       case "FuzzySearchResults":
         setFuzzyResults(data.payload.files || []);
         break;
+      case "AutocompleteOptions":
+        setAutocompleteResults(data.payload.options || []);
+        break;
     }
   }
 
@@ -147,6 +154,9 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const initWorkspace = (path: string) => sendCommand(wsRef.current, { command: "init_workspace", path });
   
   const searchFiles = (query: string) => sendCommand(wsRef.current, { command: "fuzzy_search_files", query });
+
+  const fetchAutocomplete = (input: string) => sendCommand(wsRef.current, { command: "autocomplete", input });
+  const clearAutocomplete = () => setAutocompleteResults([]);
 
   const fetchRepoMap = () => {
     if (isGenerating) return;
@@ -181,8 +191,8 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       isConnected, status, workspace, setWorkspace, isGenerating, mainView, setMainView,
       chat, setChat, activeFiles, stats, approvalReq, maxMapTokens, setMaxMapTokens,
       repomapContent, isRepomapReq: isRepomapReqRef.current, showFuzzySearch, setShowFuzzySearch,
-      fuzzyResults, initWorkspace, sendHiddenCommand, sendMessage, fetchRepoMap, handleCancel,
-      handleApproval, searchFiles
+      fuzzyResults, autocompleteResults, initWorkspace, sendHiddenCommand, sendMessage, fetchRepoMap, handleCancel,
+      handleApproval, searchFiles, fetchAutocomplete, clearAutocomplete
     }}>
       {children}
     </AppContext.Provider>

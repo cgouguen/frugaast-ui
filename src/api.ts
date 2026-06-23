@@ -2,10 +2,11 @@
 
 // 1. COMMANDS (Client -> Server)
 export type ClientCommand = 
-  | { command: "init_workspace"; path: string }
-  | { command: "chat"; input: string; mode: "ask" | "code" | "repomap"; max_map_tokens?: number }
+  | { command: "init_workspace"; path?: string } // Made path optional to match Python
+  | { command: "chat"; input: string; mode: "ask" | "code" | "repomap"; max_map_token?: number } // Fixed: token -> token (singular)
   | { command: "cancel" }
   | { command: "fuzzy_search_files"; query: string }
+  | { command: "autocomplete"; input: string } // ADDED: Autocomplete command
   | { command: "approval_response"; approval_id: string; approved: boolean };
 
 // 2. EVENTS (Server -> Client)
@@ -17,7 +18,8 @@ export type ServerEvent =
   | { type: "CoreLLMChunkReceived"; payload: { chunk?: string } }
   | { type: "CoreLLMResponseComplete"; payload: {} }
   | { type: "CoreUserFileApprovalRequested"; payload: { approval_id: string; files: string[] } }
-  | { type: "FuzzySearchResults"; payload: { files: string[] } };
+  | { type: "FuzzySearchResults"; payload: { files: string[] } }
+  | { type: "AutocompleteOptions"; payload: { options: string[]; input: string } };
 
 // 3. Helper to send typed commands
 export function sendCommand(ws: WebSocket | null, cmd: ClientCommand) {
