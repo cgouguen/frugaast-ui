@@ -22,7 +22,7 @@ export type ServerEvent =
   | { type: "CoreUserFileApprovalRequested"; payload: { approval_id: string; files: string[] } }
   | { type: "FuzzySearchResults"; payload: { files: string[] } }
   | { type: "AutocompleteOptions"; payload: { options: string[]; input: string } }
-  | { type: "ConfigState"; config: Record<string, any> };
+  | { type: "ConfigState"; payload: { config: Record<string, any> } };
 
 // 3. Helper to send typed commands
 export function sendCommand(ws: WebSocket | null, cmd: ClientCommand) {

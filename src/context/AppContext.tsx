@@ -160,7 +160,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
         setAutocompleteResults(data.payload.options || []);
         break;
       case "ConfigState":
-        setConfig(data.config || {});
+        setConfig(data.payload?.config || {});
         break;
     }
   }

@@ -8,7 +8,7 @@ import "./TitleBar.css";
 const appWindow = getCurrentWindow();
 
 export const TitleBar = () => {
-  const { sidebarVisible, setSidebarVisible, isConnected, isGenerating, workspace, setWorkspace, initWorkspace, setShowSettings } = useApp();
+  const { sidebarVisible, setSidebarVisible, isConnected, isGenerating, workspace, setWorkspace, initWorkspace, setShowSettings, config, updateConfig } = useApp();
   const [isWorkspaceMenuOpen, setIsWorkspaceMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -36,16 +36,25 @@ export const TitleBar = () => {
     try {
       const selectedPath = await open({ directory: true, multiple: false });
       if (selectedPath) {
-        setWorkspace(selectedPath as string);
-        initWorkspace(selectedPath as string);
+        const pathStr = selectedPath as string;
+        setWorkspace(pathStr);
+        initWorkspace(pathStr);
+        
+        const currentRecent = Array.isArray(config?.recent_workspaces) ? config.recent_workspaces : [];
+        const newRecent = [pathStr, ...currentRecent.filter((p: string) => p !== pathStr)].slice(0, 10);
+        updateConfig("global", { recent_workspaces: newRecent });
       }
     } catch (err) { console.error(err); }
   }
 
-  function handleOpenRecent() {
+  function handleSelectRecent(path: string) {
     setIsWorkspaceMenuOpen(false);
-    // TODO: Implement recent workspaces functionality
-    console.log("Open recent workspace");
+    setWorkspace(path);
+    initWorkspace(path);
+    
+    const currentRecent = Array.isArray(config?.recent_workspaces) ? config.recent_workspaces : [];
+    const newRecent = [path, ...currentRecent.filter((p: string) => p !== path)].slice(0, 10);
+    updateConfig("global", { recent_workspaces: newRecent });
   }
 
   return (
@@ -74,11 +83,24 @@ export const TitleBar = () => {
           {isWorkspaceMenuOpen && (
             <div className="titlebar-workspace-menu">
               <div className="titlebar-workspace-menu-item" onClick={handleOpenWorkspace}>
-                Open Workspace
+                <span>Open Workspace</span>
               </div>
-              <div className="titlebar-workspace-menu-item" onClick={handleOpenRecent}>
-                Open Recent Workspace
-              </div>
+              {(Array.isArray(config?.recent_workspaces) && config.recent_workspaces.length > 0) && (
+                <div className="titlebar-workspace-menu-item submenu-trigger">
+                  <span>Recent Workspaces</span>
+                  <ChevronRight size={14} className="submenu-icon" />
+                  <div className="titlebar-workspace-submenu">
+                    {config.recent_workspaces.map((path: string) => (
+                      <div key={path} className="titlebar-workspace-menu-item" onClick={() => handleSelectRecent(path)} title={path}>
+                        <div className="recent-workspace-text">
+                          <span className="recent-workspace-name truncate">{path.split(/[/\\]/).pop()}</span>
+                          <span className="recent-workspace-path truncate">{path}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
