@@ -6,7 +6,6 @@ import { TopBar } from "./components/layout/TopBar";
 import { ChatView } from "./components/chat/ChatView";
 import { RepoMapView } from "./components/repomap/RepoMapView";
 import { GlobalInput } from "./components/chat/GlobalInput";
-import { FuzzySearchModal } from "./components/modals/FuzzySearchModal";
 import { ApprovalModal } from "./components/modals/ApprovalModal";
 import { SettingsModal } from "./components/modals/SettingsModal";
 import "./App.css";
@@ -39,7 +38,6 @@ function AppContent() {
         <GlobalInput />
       </main>
 
-      <FuzzySearchModal />
       <ApprovalModal />
       <SettingsModal />
     </div>

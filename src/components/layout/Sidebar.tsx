@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useApp } from "../../context/AppContext";
-import { FolderOpen, Sparkles, FileCode2, Plus, Trash2, RefreshCcw, List, ListTree } from "lucide-react";
+import { FolderOpen, Sparkles, FileCode2, Plus, Trash2, RefreshCcw, List, ListTree, Search, Folder } from "lucide-react";
 import "./Sidebar.css";
 
 export const Sidebar = () => {
@@ -27,13 +27,69 @@ export const Sidebar = () => {
 
   const { 
     isConnected, isGenerating, 
-    activeFiles, sendHiddenCommand, setShowFuzzySearch, searchFiles, stats,
-    sidebarVisible
+    activeFiles, sendHiddenCommand, searchFiles, stats,
+    sidebarVisible, fuzzyResults, workspace
   } = useApp();
 
-  const handleAddFileClick = () => {
-    setShowFuzzySearch(true);
-    searchFiles("");
+  const [query, setQuery] = useState("");
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
+  useEffect(() => {
+    if (!isConnected || !workspace) return;
+    
+    searchFiles(query);
+    
+    // The backend might need a moment to index the workspace after connection.
+    // We retry the search a couple of times to ensure files load on init.
+    const timer1 = setTimeout(() => searchFiles(query), 400);
+    const timer2 = setTimeout(() => searchFiles(query), 1200);
+    
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+    };
+  }, [isConnected, workspace]);
+
+  const treeItems = useMemo(() => {
+    const root: any = { name: '', path: '', children: {}, isFile: false };
+    fuzzyResults.forEach(p => {
+      const parts = p.split(/[/\\]/);
+      let current = root;
+      parts.forEach((part, i) => {
+        const isFile = i === parts.length - 1;
+        const nodePath = parts.slice(0, i + 1).join('/');
+        if (!current.children[part]) {
+          current.children[part] = { name: part, path: isFile ? p : nodePath, children: {}, isFile };
+        }
+        if (isFile) current.children[part].isFile = true;
+        current = current.children[part];
+      });
+    });
+
+    const flatten = (node: any, depth: number = -1): any[] => {
+      let result: any[] = [];
+      if (depth >= 0) {
+        result.push({ name: node.name, path: node.path, isFile: node.isFile, depth });
+      }
+      const sortedChildren = Object.values(node.children).sort((a: any, b: any) => {
+        if (a.isFile === b.isFile) return a.name.localeCompare(b.name);
+        return a.isFile ? 1 : -1;
+      });
+      sortedChildren.forEach(child => {
+        result = result.concat(flatten(child, depth + 1));
+      });
+      return result;
+    };
+
+    return flatten(root);
+  }, [fuzzyResults]);
+
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [fuzzyResults]);
+
+  const handleSelect = (file: string) => {
+    sendHiddenCommand(`/add ${file}`);
   };
 
   const buildTree = (files: string[]) => {
@@ -97,6 +153,61 @@ export const Sidebar = () => {
       }}
     >
 
+      <div className="workspace-section">
+        <div className="section-header">
+          <span className="section-title truncate" title={workspace || "Workspace"}>
+            {workspace ? workspace.split(/[/\\]/).filter(Boolean).pop() : "Workspace"}
+          </span>
+        </div>
+        
+        {workspace ? (
+          <>
+            <div className="workspace-search">
+              <Search size={14} />
+              <input 
+                type="text" 
+                placeholder="Search files..." 
+                value={query}
+                onFocus={() => {
+                  if (fuzzyResults.length === 0) searchFiles(query);
+                }}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  searchFiles(e.target.value);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "ArrowDown") { e.preventDefault(); setSelectedIndex(p => Math.min(p + 1, Math.max(0, treeItems.length - 1))); }
+                  else if (e.key === "ArrowUp") { e.preventDefault(); setSelectedIndex(p => Math.max(p - 1, 0)); }
+                  else if (e.key === "Enter" && treeItems[selectedIndex]) { 
+                    e.preventDefault(); 
+                    if (treeItems[selectedIndex].isFile) handleSelect(treeItems[selectedIndex].path); 
+                  }
+                }}
+              />
+            </div>
+
+            <div className="workspace-results">
+              {treeItems.length === 0 ? <div className="empty-state" style={{ color: 'var(--text-muted)', fontSize: '12px', padding: '8px' }}>No files found.</div> : (
+                treeItems.map((item, i) => (
+                  <div key={item.path} className={`workspace-item ${i === selectedIndex ? 'selected' : ''}`} 
+                    style={{ paddingLeft: `${8 + item.depth * 12}px` }}
+                    onClick={() => item.isFile && handleSelect(item.path)}
+                    onMouseEnter={() => setSelectedIndex(i)}
+                  >
+                    {item.isFile ? <FileCode2 size={14} className="file-icon" /> : <Folder size={14} className="folder-icon file-icon" />}
+                    <span className="truncate" style={{ marginLeft: '6px' }}>{item.name}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </>
+        ) : (
+          <div className="empty-state" style={{ color: 'var(--text-muted)', fontSize: '12px', padding: '12px' }}>
+            No workspace opened
+          </div>
+        )}
+      </div>
+
       <div className="context-section">
         <div className="section-header">
           <span className="section-title">Context ({activeFiles.length})</span>
@@ -107,9 +218,6 @@ export const Sidebar = () => {
               title={`Switch to ${viewMode === 'flat' ? 'tree' : 'flat'} view`}
             >
               {viewMode === 'flat' ? <ListTree size={16} /> : <List size={16} />}
-            </button>
-            <button className="icon-btn-small" onClick={handleAddFileClick} title="Add files to context" disabled={!isConnected || isGenerating}>
-              <Plus size={16} />
             </button>
           </div>
         </div>
