@@ -6,4 +6,9 @@
 .welcome-icon-wrapper { padding: var(--space-lg); background: var(--bg-surface); border-radius: var(--radius-xl); border: 1px solid var(--border-strong); margin-bottom: var(--space-sm); box-shadow: var(--shadow-md); }
 .welcome-screen h2 { font-size: 20px; font-weight: 500; color: var(--text-primary); }
 
+.chat-actions { display: flex; justify-content: flex-end; max-width: 850px; width: 100%; margin: 0 auto 16px auto; padding: 0 var(--space-xl); }
+
+.clear-chat-btn { display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: transparent; border: 1px solid var(--border-strong); border-radius: var(--radius-md, 6px); color: var(--text-muted); font-size: 13px; cursor: pointer; transition: all 0.2s ease; }
+.clear-chat-btn:hover { color: var(--text-primary); border-color: var(--text-primary); background: var(--bg-surface); }
+
 .messages-container { display: flex; flex-direction: column; gap: 28px; max-width: 850px; width: 100%; margin: 0 auto; padding: 0 var(--space-xl); }
