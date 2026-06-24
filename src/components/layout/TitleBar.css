@@ -15,7 +15,7 @@
   height: 100%;
   display: flex;
   align-items: center;
-  padding-left: 12px;
+  padding-left: var(--space-md);
   cursor: default;
 
   app-region: drag;
@@ -23,9 +23,9 @@
 }
 
 .titlebar-title {
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   color: var(--text-secondary);
-  font-family: sans-serif;
+  font-family: var(--font-ui);
   font-weight: 500;
   pointer-events: none;
 }
@@ -33,7 +33,7 @@
 .titlebar-separator {
   color: var(--text-secondary);
   opacity: 0.5;
-  margin: 0 4px;
+  margin: 0 var(--space-xs);
   pointer-events: none;
 }
 
@@ -50,16 +50,16 @@
   height: 100%;
   color: var(--text-secondary);
   cursor: default;
-  transition: background 0.2s;
+  transition: background var(--transition-fast);
 }
 
 .titlebar-button:hover {
-  background: var(--bg-surface, rgba(255, 255, 255, 0.1));
+  background: var(--bg-surface);
   color: var(--text-primary);
 }
 
 .titlebar-button.close:hover {
-  background: #e81123;
+  background: var(--danger);
   color: #fff;
 }
 
@@ -76,28 +76,28 @@
   position: absolute;
   top: 100%;
   left: 0;
-  margin-top: 4px;
+  margin-top: var(--space-xs);
   background: var(--bg-panel);
-  border: 1px solid var(--border-light);
-  border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
   min-width: 180px;
   z-index: 1000;
-  padding: 4px 0;
+  padding: var(--space-xs) 0;
   app-region: no-drag;
   -webkit-app-region: no-drag;
 }
 
 .titlebar-workspace-menu-item {
-  padding: 8px 12px;
-  font-size: 12px;
+  padding: var(--space-sm) var(--space-md);
+  font-size: var(--font-size-xs);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all var(--transition-fast);
 }
 
 .titlebar-workspace-menu-item:hover {
-  background: var(--bg-surface, rgba(255, 255, 255, 0.1));
+  background: var(--bg-surface);
   color: var(--text-primary);
 }
 
@@ -105,35 +105,31 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  background: var(--bg-surface, rgba(255, 255, 255, 0.05));
-  border: 1px solid var(--border-light, rgba(255, 255, 255, 0.1));
-  border-radius: 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
   color: var(--text-secondary);
   padding: 0 10px;
   height: 24px;
-  font-size: 12px;
+  font-size: var(--font-size-xs);
+  font-family: var(--font-ui);
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: var(--transition-normal);
   max-width: 250px;
   app-region: no-drag;
   -webkit-app-region: no-drag;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   box-sizing: border-box;
 }
 
 .titlebar-workspace-btn:hover:not(:disabled) {
-  background: var(--bg-surface-hover, rgba(255, 255, 255, 0.1));
-  border-color: var(--border-light-hover, rgba(255, 255, 255, 0.2));
+  background: var(--bg-surface);
+  border-color: var(--border-light);
   color: var(--text-primary);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transform: translateY(-1px);
 }
 
 .titlebar-workspace-btn:active:not(:disabled) {
-  transform: translateY(0);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  background: var(--bg-surface-active, rgba(255, 255, 255, 0.08));
+  background: var(--bg-surface-active);
 }
 
 .titlebar-workspace-btn:disabled {
@@ -153,7 +149,7 @@
 
 .titlebar-workspace-chevron {
   opacity: 0.5;
-  transition: opacity 0.2s ease;
+  transition: opacity var(--transition-fast);
 }
 
 .titlebar-workspace-btn:hover:not(:disabled) .titlebar-workspace-chevron {

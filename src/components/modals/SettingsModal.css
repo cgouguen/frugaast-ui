@@ -1,38 +1,42 @@
 .settings-body {
-  padding-bottom: 0;
+  padding-bottom: var(--space-md);
 }
 
 .settings-row {
   display: flex;
   flex-direction: column;
-  margin-bottom: 12px;
+  margin-bottom: var(--space-md);
 }
 
 .settings-row label {
-  font-size: 12px;
-  color: #a0a0a0;
-  margin-bottom: 4px;
-  font-family: monospace;
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-xs);
+  font-family: var(--font-mono);
 }
 
 .settings-row input[type="text"] {
-  background: var(--bg-tertiary, #1e1e1e);
-  border: 1px solid var(--border-color, #333);
-  color: var(--text-primary, #fff);
-  padding: 8px;
-  border-radius: 4px;
-  font-size: 13px;
+  background: var(--bg-app);
+  border: 1px solid var(--border-strong);
+  color: var(--text-primary);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-ui);
   width: 100%;
+  transition: var(--transition-fast);
 }
 
 .settings-row input[type="checkbox"] {
   align-self: flex-start;
-  width: 16px;
-  height: 16px;
-  accent-color: var(--accent-color, #007acc);
+  width: var(--space-md);
+  height: var(--space-md);
+  accent-color: var(--accent-base);
+  cursor: pointer;
 }
 
 .settings-row input[type="text"]:focus {
   outline: none;
-  border-color: var(--accent-color, #007acc);
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 1px var(--border-focus);
 }
