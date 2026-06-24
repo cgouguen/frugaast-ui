@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useApp } from "../../context/AppContext";
+import { useEscapeKey } from "../../hooks/useEscapeKey";
 import { Search, X, FileCode2, Folder } from "lucide-react";
+import "./SharedModal.css";
 import "./FuzzySearchModal.css";
 
 export const FuzzySearchModal = () => {
@@ -20,6 +22,8 @@ export const FuzzySearchModal = () => {
   useEffect(() => {
     setSelectedIndex(0);
   }, [fuzzyResults]);
+
+  useEscapeKey(() => setShowFuzzySearch(false), showFuzzySearch);
 
   const treeItems = useMemo(() => {
     const root: any = { name: '', path: '', children: {}, isFile: false };
@@ -64,9 +68,9 @@ export const FuzzySearchModal = () => {
 
   return (
     <div className="modal-backdrop" onClick={() => setShowFuzzySearch(false)}>
-      <div className="modal-panel fuzzy-panel" onClick={e => e.stopPropagation()}>
-        <div className="fuzzy-header">
-          <Search size={18} className="fuzzy-icon" />
+      <div className="modal-panel unified-panel" onClick={e => e.stopPropagation()}>
+        <div className="unified-header">
+          <Search size={18} className="unified-icon" />
           <input 
             type="text" className="fuzzy-input" placeholder="Search files by name..." 
             value={query} 
@@ -75,8 +79,7 @@ export const FuzzySearchModal = () => {
               searchFiles(e.target.value);
             }}
             onKeyDown={(e) => {
-              if (e.key === "Escape") setShowFuzzySearch(false);
-              else if (e.key === "ArrowDown") { e.preventDefault(); setSelectedIndex(p => Math.min(p + 1, Math.max(0, treeItems.length - 1))); }
+              if (e.key === "ArrowDown") { e.preventDefault(); setSelectedIndex(p => Math.min(p + 1, Math.max(0, treeItems.length - 1))); }
               else if (e.key === "ArrowUp") { e.preventDefault(); setSelectedIndex(p => Math.max(p - 1, 0)); }
               else if (e.key === "Enter" && treeItems[selectedIndex]) { 
                 e.preventDefault(); 

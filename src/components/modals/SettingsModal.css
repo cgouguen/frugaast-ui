@@ -1,0 +1,38 @@
+.settings-body {
+  padding-bottom: 0;
+}
+
+.settings-row {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 12px;
+}
+
+.settings-row label {
+  font-size: 12px;
+  color: #a0a0a0;
+  margin-bottom: 4px;
+  font-family: monospace;
+}
+
+.settings-row input[type="text"] {
+  background: var(--bg-tertiary, #1e1e1e);
+  border: 1px solid var(--border-color, #333);
+  color: var(--text-primary, #fff);
+  padding: 8px;
+  border-radius: 4px;
+  font-size: 13px;
+  width: 100%;
+}
+
+.settings-row input[type="checkbox"] {
+  align-self: flex-start;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent-color, #007acc);
+}
+
+.settings-row input[type="text"]:focus {
+  outline: none;
+  border-color: var(--accent-color, #007acc);
+}

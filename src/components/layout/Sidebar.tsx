@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { useApp } from "../../context/AppContext";
-import { open } from "@tauri-apps/plugin-dialog";
 import { FolderOpen, Sparkles, FileCode2, Plus, Trash2, RefreshCcw, List, ListTree } from "lucide-react";
 import "./Sidebar.css";
 
@@ -27,20 +26,10 @@ export const Sidebar = () => {
   }, [isResizing]);
 
   const { 
-    isConnected, isGenerating, workspace, setWorkspace, initWorkspace, 
+    isConnected, isGenerating, 
     activeFiles, sendHiddenCommand, setShowFuzzySearch, searchFiles, stats,
     sidebarVisible
   } = useApp();
-
-  async function handleOpenWorkspace() {
-    try {
-      const selectedPath = await open({ directory: true, multiple: false });
-      if (selectedPath) {
-        setWorkspace(selectedPath as string);
-        initWorkspace(selectedPath as string);
-      }
-    } catch (err) { console.error(err); }
-  }
 
   const handleAddFileClick = () => {
     setShowFuzzySearch(true);
@@ -107,20 +96,6 @@ export const Sidebar = () => {
         transition: isResizing ? 'none' : 'margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
       }}
     >
-      <div className="sidebar-header">
-        <div className="brand">
-          <Sparkles size={18} className="brand-icon" />
-          <span>Frugaast</span>
-        </div>
-        <div className={`status-dot ${isConnected ? 'online' : 'offline'}`} title={isConnected ? "Connected" : "Disconnected"} />
-      </div>
-      
-      <div className="workspace-section">
-        <button className="workspace-btn" onClick={handleOpenWorkspace} disabled={!isConnected || isGenerating}>
-          <FolderOpen size={16} />
-          <span className="truncate">{workspace ? workspace.split(/[/\\]/).pop() : "Open Workspace"}</span>
-        </button>
-      </div>
 
       <div className="context-section">
         <div className="section-header">

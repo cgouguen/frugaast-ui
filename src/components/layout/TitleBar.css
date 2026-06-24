@@ -30,6 +30,13 @@
   pointer-events: none;
 }
 
+.titlebar-separator {
+  color: var(--text-secondary);
+  opacity: 0.5;
+  margin: 0 4px;
+  pointer-events: none;
+}
+
 .titlebar-actions {
   display: flex;
   height: 100%;
@@ -54,4 +61,101 @@
 .titlebar-button.close:hover {
   background: #e81123;
   color: #fff;
+}
+
+.titlebar-workspace-wrapper {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  app-region: no-drag;
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-workspace-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 180px;
+  z-index: 1000;
+  padding: 4px 0;
+  app-region: no-drag;
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-workspace-menu-item {
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.titlebar-workspace-menu-item:hover {
+  background: var(--bg-surface, rgba(255, 255, 255, 0.1));
+  color: var(--text-primary);
+}
+
+.titlebar-workspace-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-surface, rgba(255, 255, 255, 0.05));
+  border: 1px solid var(--border-light, rgba(255, 255, 255, 0.1));
+  border-radius: 6px;
+  color: var(--text-secondary);
+  padding: 0 10px;
+  height: 24px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  max-width: 250px;
+  app-region: no-drag;
+  -webkit-app-region: no-drag;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-sizing: border-box;
+}
+
+.titlebar-workspace-btn:hover:not(:disabled) {
+  background: var(--bg-surface-hover, rgba(255, 255, 255, 0.1));
+  border-color: var(--border-light-hover, rgba(255, 255, 255, 0.2));
+  color: var(--text-primary);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.titlebar-workspace-btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  background: var(--bg-surface-active, rgba(255, 255, 255, 0.08));
+}
+
+.titlebar-workspace-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+  background: transparent;
+  border-color: transparent;
+}
+
+.titlebar-workspace-btn .truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.titlebar-workspace-chevron {
+  opacity: 0.5;
+  transition: opacity 0.2s ease;
+}
+
+.titlebar-workspace-btn:hover:not(:disabled) .titlebar-workspace-chevron {
+  opacity: 0.9;
 }

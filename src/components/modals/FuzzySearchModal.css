@@ -1,8 +1,5 @@
 /* FuzzySearchModal.css */
 /* Fuzzy Modal */
-.fuzzy-panel { width: 500px; padding: 0; display: flex; flex-direction: column; overflow: hidden; }
-.fuzzy-header { display: flex; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--border-light); gap: 12px; }
-.fuzzy-icon { color: var(--text-secondary); }
 .fuzzy-input { flex: 1; background: transparent; border: none; color: var(--text-primary); font-size: 15px; outline: none; }
 .fuzzy-input::placeholder { color: var(--text-muted); }
 .fuzzy-results { max-height: 300px; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 4px; }

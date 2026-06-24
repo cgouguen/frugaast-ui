@@ -37,6 +37,11 @@ interface AppContextType {
   autocompleteResults: string[];
   fetchAutocomplete: (input: string) => void;
   clearAutocomplete: () => void;
+  config: Record<string, any>;
+  getConfig: () => void;
+  updateConfig: (scope: "local" | "global", updates: Record<string, any>) => void;
+  showSettings: boolean;
+  setShowSettings: (show: boolean) => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -60,6 +65,8 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const [showFuzzySearch, setShowFuzzySearch] = useState(false);
   const [fuzzyResults, setFuzzyResults] = useState<string[]>([]);
   const [autocompleteResults, setAutocompleteResults] = useState<string[]>([]);
+  const [config, setConfig] = useState<Record<string, any>>({});
+  const [showSettings, setShowSettings] = useState(false);
 
   const wsRef = useRef<WebSocket | null>(null);
   const childRef = useRef<any>(null);
@@ -87,7 +94,11 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     function connectWebSocket() {
       const ws = new WebSocket("ws://127.0.0.1:8002/ws/chat");
       wsRef.current = ws;
-      ws.onopen = () => { setIsConnected(true); setStatus("Ready"); };
+      ws.onopen = () => { 
+        setIsConnected(true); 
+        setStatus("Ready"); 
+        ws.send(JSON.stringify({ command: "get_config" }));
+      };
       ws.onmessage = (event) => handleServerEvent(JSON.parse(event.data));
       ws.onclose = () => { setIsConnected(false); setStatus("Disconnected. Retrying..."); setTimeout(connectWebSocket, 3000); };
     }
@@ -148,6 +159,9 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       case "AutocompleteOptions":
         setAutocompleteResults(data.payload.options || []);
         break;
+      case "ConfigState":
+        setConfig(data.config || {});
+        break;
     }
   }
 
@@ -160,6 +174,9 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
 
   const fetchAutocomplete = (input: string) => sendCommand(wsRef.current, { command: "autocomplete", input });
   const clearAutocomplete = () => setAutocompleteResults([]);
+
+  const getConfig = () => sendCommand(wsRef.current, { command: "get_config" });
+  const updateConfig = (scope: "local" | "global", updates: Record<string, any>) => sendCommand(wsRef.current, { command: "update_config", scope, updates });
 
   const fetchRepoMap = () => {
     if (isGenerating) return;
@@ -195,7 +212,8 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       chat, setChat, activeFiles, stats, approvalReq, maxMapTokens, setMaxMapTokens,
       repomapContent, isRepomapReq: isRepomapReqRef.current, sidebarVisible, setSidebarVisible, showFuzzySearch, setShowFuzzySearch,
       fuzzyResults, autocompleteResults, initWorkspace, sendHiddenCommand, sendMessage, fetchRepoMap, handleCancel,
-      handleApproval, searchFiles, fetchAutocomplete, clearAutocomplete
+      handleApproval, searchFiles, fetchAutocomplete, clearAutocomplete, config, getConfig, updateConfig,
+      showSettings, setShowSettings
     }}>
       {children}
     </AppContext.Provider>

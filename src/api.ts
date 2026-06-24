@@ -7,7 +7,9 @@ export type ClientCommand =
   | { command: "cancel" }
   | { command: "fuzzy_search_files"; query: string }
   | { command: "autocomplete"; input: string } // ADDED: Autocomplete command
-  | { command: "approval_response"; approval_id: string; approved: boolean };
+  | { command: "approval_response"; approval_id: string; approved: boolean }
+  | { command: "get_config" }
+  | { command: "update_config"; scope: "local" | "global"; updates: Record<string, any> };
 
 // 2. EVENTS (Server -> Client)
 export type ServerEvent =
@@ -19,7 +21,8 @@ export type ServerEvent =
   | { type: "CoreLLMResponseComplete"; payload: {} }
   | { type: "CoreUserFileApprovalRequested"; payload: { approval_id: string; files: string[] } }
   | { type: "FuzzySearchResults"; payload: { files: string[] } }
-  | { type: "AutocompleteOptions"; payload: { options: string[]; input: string } };
+  | { type: "AutocompleteOptions"; payload: { options: string[]; input: string } }
+  | { type: "ConfigState"; config: Record<string, any> };
 
 // 3. Helper to send typed commands
 export function sendCommand(ws: WebSocket | null, cmd: ClientCommand) {
