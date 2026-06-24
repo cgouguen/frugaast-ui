@@ -1,0 +1,57 @@
+/* TitleBar.css */
+.titlebar {
+  height: 32px;
+  background: var(--bg-panel);
+  user-select: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.titlebar-drag-region {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  padding-left: 12px;
+  cursor: default;
+
+  app-region: drag;
+  -webkit-app-region: drag;
+}
+
+.titlebar-title {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-family: sans-serif;
+  font-weight: 500;
+  pointer-events: none;
+}
+
+.titlebar-actions {
+  display: flex;
+  height: 100%;
+}
+
+.titlebar-button {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: 46px;
+  height: 100%;
+  color: var(--text-secondary);
+  cursor: default;
+  transition: background 0.2s;
+}
+
+.titlebar-button:hover {
+  background: var(--bg-surface, rgba(255, 255, 255, 0.1));
+  color: var(--text-primary);
+}
+
+.titlebar-button.close:hover {
+  background: #e81123;
+  color: #fff;
+}

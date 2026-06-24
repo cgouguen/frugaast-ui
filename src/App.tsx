@@ -1,5 +1,6 @@
 import React from "react";
 import { AppProvider, useApp } from "./context/AppContext";
+import { TitleBar } from "./components/layout/TitleBar";
 import { Sidebar } from "./components/layout/Sidebar";
 import { TopBar } from "./components/layout/TopBar";
 import { ChatView } from "./components/chat/ChatView";
@@ -13,7 +14,7 @@ function AppContent() {
   const { mainView } = useApp();
 
   return (
-    <div className="app-layout">
+    <div className="app-layout" style={{ flex: 1, height: 'calc(100vh - 32px)', overflow: 'hidden' }}>
       <Sidebar />
       <main className="main-area">
         <TopBar />
@@ -34,7 +35,10 @@ function AppContent() {
 export default function App() {
   return (
     <AppProvider>
-      <AppContent />
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+        <TitleBar />
+        <AppContent />
+      </div>
     </AppProvider>
   );
 }
