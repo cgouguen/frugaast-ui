@@ -28,7 +28,8 @@ export const Sidebar = () => {
 
   const { 
     isConnected, isGenerating, workspace, setWorkspace, initWorkspace, 
-    activeFiles, sendHiddenCommand, setShowFuzzySearch, searchFiles, stats 
+    activeFiles, sendHiddenCommand, setShowFuzzySearch, searchFiles, stats,
+    sidebarVisible
   } = useApp();
 
   async function handleOpenWorkspace() {
@@ -98,7 +99,14 @@ export const Sidebar = () => {
   };
 
   return (
-    <aside className="sidebar" style={{ width: sidebarWidth }}>
+    <aside 
+      className="sidebar" 
+      style={{ 
+        width: sidebarWidth, 
+        marginLeft: sidebarVisible ? 0 : -sidebarWidth,
+        transition: isResizing ? 'none' : 'margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+      }}
+    >
       <div className="sidebar-header">
         <div className="brand">
           <Sparkles size={18} className="brand-icon" />

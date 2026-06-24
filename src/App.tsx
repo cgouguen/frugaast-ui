@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { AppProvider, useApp } from "./context/AppContext";
 import { TitleBar } from "./components/layout/TitleBar";
 import { Sidebar } from "./components/layout/Sidebar";
@@ -11,7 +11,19 @@ import { ApprovalModal } from "./components/modals/ApprovalModal";
 import "./App.css";
 
 function AppContent() {
-  const { mainView } = useApp();
+  const { mainView, sidebarVisible, setSidebarVisible } = useApp();
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Crtl+B = toggle sidebar
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        setSidebarVisible(!sidebarVisible);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [sidebarVisible, setSidebarVisible]);
 
   return (
     <div className="app-layout" style={{ flex: 1, height: 'calc(100vh - 32px)', overflow: 'hidden' }}>
