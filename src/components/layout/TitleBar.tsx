@@ -9,14 +9,14 @@ export const TitleBar = () => {
   return (
     <div 
       className="titlebar" 
+      data-tauri-drag-region
       onDoubleClick={() => appWindow.toggleMaximize()}
     >
-      <div className="titlebar-drag-region">
-        <span className="titlebar-title">frugaast-ui</span>
+      <div className="titlebar-drag-region" data-tauri-drag-region>
+        <span className="titlebar-title" data-tauri-drag-region>Frugaast</span>
       </div>
       <div 
         className="titlebar-actions" 
-        onMouseDown={(e) => e.stopPropagation()}
         onDoubleClick={(e) => e.stopPropagation()}
       >
         <div className="titlebar-button" onClick={() => appWindow.minimize()}>

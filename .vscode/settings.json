@@ -7,7 +7,7 @@
             "path": "/bin/bash",
             "args": [
                 "-c",
-                "tmuxinator start -p /home/christophe/Workspace/chris-infra/tmux/generic.yml frugaast-ui ${workspaceFolder}"
+                "tmuxinator start -p /home/christophe/Workspace/chris-infra/tmux/generic.yml ${workspaceFolderBasename} ${workspaceFolder}"
             ]
         }
     },
