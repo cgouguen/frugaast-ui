@@ -1,12 +1,31 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useApp } from "../../context/AppContext";
-import { FolderOpen, Sparkles, FileCode2, Plus, Trash2, RefreshCcw, List, ListTree, Search, Folder } from "lucide-react";
+import { FolderOpen, Sparkles, FileCode2, Plus, Trash2, RefreshCcw, List, ListTree, Search, Folder, Check, X, ChevronDown, ChevronRight } from "lucide-react";
 import "./Sidebar.css";
 
 export const Sidebar = () => {
   const [sidebarWidth, setSidebarWidth] = useState(280);
   const [isResizing, setIsResizing] = useState(false);
   const [viewMode, setViewMode] = useState<'flat' | 'tree'>('flat');
+  const [verticalRatio, setVerticalRatio] = useState(0.5);
+  const [isResizingVertical, setIsResizingVertical] = useState(false);
+  const [workspaceCollapsed, setWorkspaceCollapsed] = useState(false);
+  const [contextCollapsed, setContextCollapsed] = useState(false);
+
+  useEffect(() => {
+    if (!isResizingVertical) return;
+    const handleMouseMove = (e: MouseEvent) => {
+      const ratio = e.clientY / window.innerHeight;
+      setVerticalRatio(Math.max(0.1, Math.min(0.9, ratio)));
+    };
+    const handleMouseUp = () => setIsResizingVertical(false);
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isResizingVertical]);
 
   useEffect(() => {
     if (!isResizing) return;
@@ -119,23 +138,24 @@ export const Sidebar = () => {
     return Object.values(nodes).map((node: any, i) => (
       <React.Fragment key={`${depth}-${i}`}>
         <div 
-          className={node.path ? "context-item" : "context-item folder"} 
-          style={{ paddingLeft: depth > 0 ? `${depth * 12 + 10}px` : undefined }}
+          className="tree-item in-context" 
+          style={{ paddingLeft: `${depth * 12 + 8}px`, cursor: node.path ? 'pointer' : 'default' }}
+          onClick={() => node.path && sendHiddenCommand(`/drop ${node.path}`)}
         >
-          <div className="context-item-name truncate" title={node.path || node.folderPath}>
+          <div className="tree-item-left" title={node.path || node.folderPath}>
             {node.path ? (
-              <FileCode2 size={14} className="file-icon" />
+              <FileCode2 size={14} className="tree-item-icon" />
             ) : (
-              <FolderOpen size={14} className="folder-icon file-icon" />
+              <FolderOpen size={14} className="tree-item-icon" />
             )}
-            {node.name}
+            <span className="tree-item-name">{node.name}</span>
           </div>
           <button 
-            className="remove-btn" 
-            onClick={() => sendHiddenCommand(`/drop ${node.path || node.folderPath}`)} 
+            className="item-action-btn remove" 
+            onClick={(e) => { e.stopPropagation(); sendHiddenCommand(`/drop ${node.path || node.folderPath}`); }} 
             title={`Remove ${node.path ? 'file' : 'folder'}`}
           >
-            <Trash2 size={14} />
+            <X size={14} />
           </button>
         </div>
         {Object.keys(node.children).length > 0 && renderTree(node.children, depth + 1)}
@@ -153,14 +173,18 @@ export const Sidebar = () => {
       }}
     >
 
-      <div className="workspace-section">
-        <div className="section-header">
-          <span className="section-title truncate" title={workspace || "Workspace"}>
-            {workspace ? workspace.split(/[/\\]/).filter(Boolean).pop() : "Workspace"}
-          </span>
+      <div className="workspace-section" style={{ flex: workspaceCollapsed ? '0 0 auto' : verticalRatio }}>
+        <div className="section-header" onClick={() => setWorkspaceCollapsed(!workspaceCollapsed)} style={{ cursor: 'pointer', userSelect: 'none' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            {workspaceCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+            <Folder size={13} className="tree-item-icon" />
+            <span className="section-title truncate" title={workspace || "Workspace"}>
+              {workspace ? workspace.split(/[/\\]/).filter(Boolean).pop() : "Workspace"}
+            </span>
+          </div>
         </div>
         
-        {workspace ? (
+        {!workspaceCollapsed && (workspace ? (
           <>
             <div className="workspace-search">
               <Search size={14} />
@@ -186,31 +210,58 @@ export const Sidebar = () => {
               />
             </div>
 
-            <div className="workspace-results">
-              {treeItems.length === 0 ? <div className="empty-state" style={{ color: 'var(--text-muted)', fontSize: '12px', padding: '8px' }}>No files found.</div> : (
-                treeItems.map((item, i) => (
-                  <div key={item.path} className={`workspace-item ${i === selectedIndex ? 'selected' : ''}`} 
-                    style={{ paddingLeft: `${8 + item.depth * 12}px` }}
-                    onClick={() => item.isFile && handleSelect(item.path)}
-                    onMouseEnter={() => setSelectedIndex(i)}
-                  >
-                    {item.isFile ? <FileCode2 size={14} className="file-icon" /> : <Folder size={14} className="folder-icon file-icon" />}
-                    <span className="truncate" style={{ marginLeft: '6px' }}>{item.name}</span>
-                  </div>
-                ))
+            <div className="scrollable-list">
+              {treeItems.length === 0 ? <div className="empty-state">No files found.</div> : (
+                treeItems.map((item, i) => {
+                  const isAdded = item.isFile && activeFiles.includes(item.path);
+                  return (
+                    <div key={item.path} className={`tree-item ${i === selectedIndex ? 'selected' : ''} ${isAdded ? 'in-context' : ''}`} 
+                      style={{ paddingLeft: `${8 + item.depth * 12}px` }}
+                      onClick={() => item.isFile && handleSelect(item.path)}
+                      onMouseEnter={() => setSelectedIndex(i)}
+                    >
+                      <div className="tree-item-left">
+                        {item.isFile ? <FileCode2 size={14} className="tree-item-icon" /> : <Folder size={14} className="tree-item-icon" />}
+                        <span className="tree-item-name">{item.name}</span>
+                      </div>
+                      {item.isFile && (
+                        <button 
+                          className={`item-action-btn ${isAdded ? 'added' : 'add'}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!isAdded) handleSelect(item.path);
+                          }}
+                          title={isAdded ? "In Context" : "Add to Context"}
+                        >
+                          {isAdded ? <Check size={14} /> : <Plus size={14} />}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })
               )}
             </div>
           </>
         ) : (
-          <div className="empty-state" style={{ color: 'var(--text-muted)', fontSize: '12px', padding: '12px' }}>
+          <div className="empty-state">
             No workspace opened
           </div>
-        )}
+        ))}
       </div>
 
-      <div className="context-section">
+      {!workspaceCollapsed && !contextCollapsed && (
+        <div 
+          className={`sidebar-vertical-resize-handle ${isResizingVertical ? "is-resizing" : ""}`}
+          onMouseDown={(e) => { e.preventDefault(); setIsResizingVertical(true); }}
+        />
+      )}
+
+      <div className="context-section" style={{ flex: contextCollapsed ? '0 0 auto' : (1 - verticalRatio) }}>
         <div className="section-header">
-          <span className="section-title">Context ({activeFiles.length})</span>
+          <div onClick={() => setContextCollapsed(!contextCollapsed)} style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', userSelect: 'none' }}>
+            {contextCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+            <span className="section-title">Context ({activeFiles.length})</span>
+          </div>
           <div style={{ display: 'flex', gap: '4px' }}>
             <button 
               className="icon-btn-small" 
@@ -222,29 +273,33 @@ export const Sidebar = () => {
           </div>
         </div>
         
-        <div className="context-list">
-          {activeFiles.length === 0 ? (
-            <div className="empty-state">No files loaded.</div>
-          ) : viewMode === 'flat' ? (
-            activeFiles.map((f, i) => (
-              <div key={i} className="context-item">
-                <div className="context-item-name truncate" title={f}>
-                  <FileCode2 size={14} className="file-icon" />
-                  {f.split(/[/\\]/).pop()}
-                </div>
-                <button className="remove-btn" onClick={() => sendHiddenCommand(`/drop ${f}`)} title="Remove file">
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            ))
-          ) : (
-            renderTree(buildTree(activeFiles))
-          )}
-        </div>
-        
-        <button className="reset-context-btn" onClick={() => sendHiddenCommand(`/reset`)} title="Clear all context files">
-          <RefreshCcw size={14} /> Reset Context
-        </button>
+        {!contextCollapsed && (
+          <>
+            <div className="scrollable-list">
+              {activeFiles.length === 0 ? (
+                <div className="empty-state">No files loaded.</div>
+              ) : viewMode === 'flat' ? (
+                activeFiles.map((f, i) => (
+                  <div key={i} className="tree-item in-context" onClick={() => sendHiddenCommand(`/drop ${f}`)}>
+                    <div className="tree-item-left" title={f}>
+                      <FileCode2 size={14} className="tree-item-icon" />
+                      <span className="tree-item-name">{f.split(/[/\\]/).pop()}</span>
+                    </div>
+                    <button className="item-action-btn remove" onClick={(e) => { e.stopPropagation(); sendHiddenCommand(`/drop ${f}`); }} title="Remove from context">
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))
+              ) : (
+                renderTree(buildTree(activeFiles))
+              )}
+            </div>
+            
+            <button className="reset-context-btn" onClick={() => sendHiddenCommand(`/reset`)} title="Clear all context files">
+              <RefreshCcw size={14} /> Reset Context
+            </button>
+          </>
+        )}
       </div>
 
       <div className="stats-card">
