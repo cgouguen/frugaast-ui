@@ -120,7 +120,6 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
           setRepomapContent(data.payload.message);
           setIsGenerating(false); setStatus("Ready");
         } else {
-          setChat((prev) => [...prev, { role: "system", content: data.payload.message }]);
           setIsGenerating(false); setStatus("Ready");
         }
         break;

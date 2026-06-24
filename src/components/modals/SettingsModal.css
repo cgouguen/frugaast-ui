@@ -1,42 +1,247 @@
-.settings-body {
-  padding-bottom: var(--space-md);
+/* --- Animations & Overrides --- */
+.settings-backdrop {
+  /* Assumes .modal-backdrop handles fixed positioning */
+  backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.4) !important; 
 }
 
-.settings-row {
+.fade-in { animation: setFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.fade-out { animation: setFadeOut 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.slide-up { animation: setSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.slide-down { animation: setSlideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+@keyframes setFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes setFadeOut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes setSlideUp { 
+  from { opacity: 0; transform: translateY(16px) scale(0.97); } 
+  to { opacity: 1; transform: translateY(0) scale(1); } 
+}
+@keyframes setSlideDown { 
+  from { opacity: 1; transform: translateY(0) scale(1); } 
+  to { opacity: 0; transform: translateY(8px) scale(0.98); } 
+}
+
+/* --- Panel Adjustments --- */
+.settings-panel {
+  max-width: 540px; /* Slightly wider for the beautiful settings view */
+  max-height: 85vh;
+}
+
+.settings-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-md, 8px);
+  transition: all 0.2s ease;
+  display: flex;
+  padding: 6px;
+}
+
+.settings-close-btn:hover {
+  background: rgba(128, 128, 128, 0.15);
+  color: var(--text-primary);
+}
+
+.settings-body-extended {
+  padding: var(--space-md) var(--space-md) 24px;
+}
+
+/* --- Scope Switcher (Tabs) --- */
+.scope-switcher {
+  display: flex;
+  background: rgba(128, 128, 128, 0.08);
+  padding: 4px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(128, 128, 128, 0.1);
+}
+
+.scope-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.scope-tab:hover:not(.active) {
+  color: var(--text-primary);
+  background: rgba(128, 128, 128, 0.05);
+}
+
+.scope-tab.active {
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(128, 128, 128, 0.05);
+}
+
+/* --- Info Banner --- */
+.scope-info-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(59, 130, 246, 0.08); /* Subtle blue tint */
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  border-radius: 8px;
+  margin-bottom: 20px;
+  color: var(--text-secondary);
+}
+
+.scope-info-banner .info-icon {
+  color: #3b82f6; /* Accent blue */
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.scope-info-banner p {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+/* --- Settings List & Cards --- */
+.settings-list {
   display: flex;
   flex-direction: column;
-  margin-bottom: var(--space-md);
+  gap: 10px;
 }
 
-.settings-row label {
-  font-size: var(--font-size-xs);
+.modern-setting-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: rgba(128, 128, 128, 0.03);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg, 12px);
+  transition: all 0.2s ease;
+}
+
+.modern-setting-card:hover {
+  border-color: var(--border-strong);
+  background: rgba(128, 128, 128, 0.05);
+}
+
+.setting-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-right: 16px;
+}
+
+.setting-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.setting-description {
+  font-size: 0.75rem;
   color: var(--text-secondary);
-  margin-bottom: var(--space-xs);
-  font-family: var(--font-mono);
 }
 
-.settings-row input[type="text"] {
-  background: var(--bg-app);
+.setting-control {
+  min-width: 180px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* --- Custom Toggle Switch --- */
+.modern-toggle {
+  width: 42px;
+  height: 24px;
+  background: var(--border-strong);
+  border-radius: 999px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.modern-toggle.active {
+  background: var(--accent-base, #3b82f6);
+}
+
+.modern-toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.modern-toggle.active .modern-toggle-thumb {
+  transform: translateX(18px);
+}
+
+/* --- Custom Text Input --- */
+.input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.input-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+.modern-input {
+  width: 100%;
+  background: var(--bg-panel);
   border: 1px solid var(--border-strong);
   color: var(--text-primary);
-  padding: var(--space-sm) var(--space-md);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
-  font-family: var(--font-ui);
-  width: 100%;
-  transition: var(--transition-fast);
+  padding: 8px 10px 8px 32px;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
 }
 
-.settings-row input[type="checkbox"] {
-  align-self: flex-start;
-  width: var(--space-md);
-  height: var(--space-md);
-  accent-color: var(--accent-base);
-  cursor: pointer;
-}
-
-.settings-row input[type="text"]:focus {
+.modern-input:focus {
   outline: none;
-  border-color: var(--border-focus);
-  box-shadow: 0 0 0 1px var(--border-focus);
+  border-color: var(--accent-base, #3b82f6);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+/* --- Empty State --- */
+.settings-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 0;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.empty-icon {
+  margin-bottom: 12px;
+  opacity: 0.4;
+}
+
+/* --- Footer Buttons --- */
+.settings-save-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
