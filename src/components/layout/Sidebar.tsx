@@ -1,9 +1,23 @@
+// src/components/layout/Sidebar.tsx
 import React, { useState, useEffect, useMemo } from "react";
 import { useApp } from "../../context/AppContext";
-import { FolderOpen, Sparkles, FileCode2, Plus, Trash2, RefreshCcw, List, ListTree, Search, Folder, Check, X, ChevronDown, ChevronRight } from "lucide-react";
+import { FileCode2, Plus, List, ListTree, Search, Folder, Check, X, ChevronDown, ChevronRight, RefreshCcw } from "lucide-react";
 import "./Sidebar.css";
 
+type TreeNode = {
+  name: string;
+  path: string | null;
+  folderPath: string | null;
+  children: Record<string, TreeNode>;
+  isFile: boolean;
+};
+
 export const Sidebar = () => {
+  const { 
+    isConnected, searchFiles, stats, sendHiddenCommand,
+    sidebarVisible, fuzzyResults, workspace, activeFiles
+  } = useApp();
+
   const [sidebarWidth, setSidebarWidth] = useState(280);
   const [isResizing, setIsResizing] = useState(false);
   const [viewMode, setViewMode] = useState<'flat' | 'tree'>('flat');
@@ -11,7 +25,14 @@ export const Sidebar = () => {
   const [isResizingVertical, setIsResizingVertical] = useState(false);
   const [workspaceCollapsed, setWorkspaceCollapsed] = useState(false);
   const [contextCollapsed, setContextCollapsed] = useState(false);
+  
+  const [query, setQuery] = useState("");
+  const [selectedIndex, setSelectedIndex] = useState(0);
 
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+  const [collapsedContextFolders, setCollapsedContextFolders] = useState<Set<string>>(new Set());
+
+  // Vertical resizing handler
   useEffect(() => {
     if (!isResizingVertical) return;
     const handleMouseMove = (e: MouseEvent) => {
@@ -27,14 +48,10 @@ export const Sidebar = () => {
     };
   }, [isResizingVertical]);
 
+  // Horizontal resizing handler
   useEffect(() => {
     if (!isResizing) return;
-    const handleMouseMove = (e: MouseEvent) => {
-      let newWidth = e.clientX;
-      if (newWidth < 200) newWidth = 200;
-      if (newWidth > 800) newWidth = 800;
-      setSidebarWidth(newWidth);
-    };
+    const handleMouseMove = (e: MouseEvent) => setSidebarWidth(Math.max(200, Math.min(e.clientX, 800)));
     const handleMouseUp = () => setIsResizing(false);
     document.addEventListener("mousemove", handleMouseMove);
     document.addEventListener("mouseup", handleMouseUp);
@@ -44,228 +61,287 @@ export const Sidebar = () => {
     };
   }, [isResizing]);
 
-  const { 
-    isConnected, isGenerating, 
-    activeFiles, sendHiddenCommand, searchFiles, stats,
-    sidebarVisible, fuzzyResults, workspace
-  } = useApp();
-
-  const [query, setQuery] = useState("");
-  const [selectedIndex, setSelectedIndex] = useState(0);
-
+  // Initial load sync
   useEffect(() => {
     if (!isConnected || !workspace) return;
-    
     searchFiles(query);
-    
-    // The backend might need a moment to index the workspace after connection.
-    // We retry the search a couple of times to ensure files load on init.
-    const timer1 = setTimeout(() => searchFiles(query), 400);
-    const timer2 = setTimeout(() => searchFiles(query), 1200);
-    
-    return () => {
-      clearTimeout(timer1);
-      clearTimeout(timer2);
-    };
+    const timer = setTimeout(() => searchFiles(query), 800); // safety init
+    return () => clearTimeout(timer);
   }, [isConnected, workspace]);
 
-  const treeItems = useMemo(() => {
-    const root: any = { name: '', path: '', children: {}, isFile: false };
-    fuzzyResults.forEach(p => {
-      const parts = p.split(/[/\\]/);
-      let current = root;
-      parts.forEach((part, i) => {
-        const isFile = i === parts.length - 1;
-        const nodePath = parts.slice(0, i + 1).join('/');
-        if (!current.children[part]) {
-          current.children[part] = { name: part, path: isFile ? p : nodePath, children: {}, isFile };
-        }
-        if (isFile) current.children[part].isFile = true;
-        current = current.children[part];
-      });
-    });
-
-    const flatten = (node: any, depth: number = -1): any[] => {
-      let result: any[] = [];
-      if (depth >= 0) {
-        result.push({ name: node.name, path: node.path, isFile: node.isFile, depth });
-      }
-      const sortedChildren = Object.values(node.children).sort((a: any, b: any) => {
-        if (a.isFile === b.isFile) return a.name.localeCompare(b.name);
-        return a.isFile ? 1 : -1;
-      });
-      sortedChildren.forEach(child => {
-        result = result.concat(flatten(child, depth + 1));
-      });
-      return result;
-    };
-
-    return flatten(root);
-  }, [fuzzyResults]);
-
-  useEffect(() => {
-    setSelectedIndex(0);
-  }, [fuzzyResults]);
-
-  const handleSelect = (file: string) => {
-    sendHiddenCommand(`/add ${file}`);
-  };
+  const handleSelect = (file: string) => sendHiddenCommand(`/add ${file}`);
 
   const buildTree = (files: string[]) => {
-    const root: any = {};
+    const root: Record<string, TreeNode> = {};
     files.forEach(file => {
+      const isExplicitDir = file.endsWith('/') || file.endsWith('\\');
       const parts = file.replace(/\\/g, '/').split('/').filter(Boolean);
+      
       let current = root;
       let currentPath = '';
+      
       parts.forEach((part, index) => {
         currentPath += (currentPath ? '/' : '') + part;
-        const isFile = index === parts.length - 1;
+        const isLast = index === parts.length - 1;
+        // It is a file only if it is the last segment and doesn't explicitly trail with a slash
+        const isFile = isLast && !isExplicitDir;
+        
         if (!current[part]) {
-          current[part] = {
-            name: part,
-            path: isFile ? file : null,
-            folderPath: isFile ? null : currentPath + '/',
-            children: {}
+          current[part] = { 
+            name: part, 
+            path: isFile ? file : null, 
+            folderPath: !isFile ? currentPath : null, 
+            children: {}, 
+            isFile 
           };
+        } else if (!isFile) {
+          // If the node already exists but we now traverse through it (meaning it has children),
+          // ensure it converts to a directory instead of remaining a generic file.
+          current[part].isFile = false;
+          current[part].folderPath = currentPath;
+          current[part].path = null;
         }
+        
         current = current[part].children;
       });
     });
     return root;
   };
 
-  const renderTree = (nodes: any, depth = 0) => {
-    return Object.values(nodes).map((node: any, i) => (
-      <React.Fragment key={`${depth}-${i}`}>
-        <div 
-          className="tree-item in-context" 
-          style={{ paddingLeft: `${depth * 12 + 8}px`, cursor: node.path ? 'pointer' : 'default' }}
-          onClick={() => node.path && sendHiddenCommand(`/drop ${node.path}`)}
-        >
-          <div className="tree-item-left" title={node.path || node.folderPath}>
-            {node.path ? (
-              <FileCode2 size={14} className="tree-item-icon" />
-            ) : (
-              <FolderOpen size={14} className="tree-item-icon" />
-            )}
+  const explorerTree = useMemo(() => {
+    if (query.trim() !== '') return null; // Don't build tree if in search flat mode
+    return buildTree(fuzzyResults);
+  }, [fuzzyResults, query]);
+
+  const contextTree = useMemo(() => {
+    if (viewMode === 'flat') return null;
+    return buildTree(activeFiles);
+  }, [activeFiles, viewMode]);
+
+  // Default expanding top-level explorer folders
+  useEffect(() => {
+    if (explorerTree && expandedFolders.size === 0) {
+      const rootFolders = Object.values(explorerTree).filter(n => !n.isFile).map(n => n.folderPath!);
+      setExpandedFolders(new Set(rootFolders));
+    }
+  }, [explorerTree]);
+
+  const toggleFolder = (folderPath: string) => {
+    setExpandedFolders(prev => {
+      const next = new Set(prev);
+      if (next.has(folderPath)) next.delete(folderPath); else next.add(folderPath);
+      return next;
+    });
+  };
+
+  const toggleContextFolder = (folderPath: string) => {
+    setCollapsedContextFolders(prev => {
+      const next = new Set(prev);
+      if (next.has(folderPath)) next.delete(folderPath); else next.add(folderPath);
+      return next;
+    });
+  };
+
+  const renderExplorerTree = (nodes: Record<string, TreeNode>, depth = 0) => {
+    const sortedNodes = Object.values(nodes).sort((a, b) => {
+      if (a.isFile === b.isFile) return a.name.localeCompare(b.name);
+      return a.isFile ? 1 : -1;
+    });
+
+    return sortedNodes.map((node) => {
+      const isExpanded = expandedFolders.has(node.folderPath || '');
+      const isAdded = node.isFile && activeFiles.includes(node.path!);
+
+      if (!node.isFile) {
+        return (
+          <React.Fragment key={`${depth}-${node.name}`}>
+            <div className="tree-item folder" style={{ paddingLeft: `${depth * 12 + 12}px` }} onClick={() => toggleFolder(node.folderPath!)}>
+              <div className="tree-item-left" title={node.folderPath!}>
+                {isExpanded ? <ChevronDown size={14} className="tree-item-icon" /> : <ChevronRight size={14} className="tree-item-icon" />}
+                <Folder size={14} className="tree-item-icon" />
+                <span className="tree-item-name">{node.name}</span>
+              </div>
+              <button 
+                className="item-action-btn add" 
+                onClick={(e) => { 
+                  e.stopPropagation(); 
+                  const addFolderFiles = (n: TreeNode) => {
+                    if (n.isFile) {
+                      if (!activeFiles.includes(n.path!)) {
+                        sendHiddenCommand(`/add ${n.path}`);
+                      }
+                    } else {
+                      Object.values(n.children).forEach(addFolderFiles);
+                    }
+                  };
+                  addFolderFiles(node);
+                }} 
+                title="Add folder to context"
+              >
+                <Plus size={14} />
+              </button>
+            </div>
+            {isExpanded && renderExplorerTree(node.children, depth + 1)}
+          </React.Fragment>
+        );
+      }
+
+      return (
+        <div key={node.path} className={`tree-item file ${isAdded ? 'in-context' : ''}`} style={{ paddingLeft: `${depth * 12 + 34}px` }} onClick={() => !isAdded && handleSelect(node.path!)}>
+          <div className="tree-item-left" title={node.path!}>
+            <FileCode2 size={14} className="tree-item-icon file-icon" />
             <span className="tree-item-name">{node.name}</span>
           </div>
-          <button 
-            className="item-action-btn remove" 
-            onClick={(e) => { e.stopPropagation(); sendHiddenCommand(`/drop ${node.path || node.folderPath}`); }} 
-            title={`Remove ${node.path ? 'file' : 'folder'}`}
-          >
+          {!isAdded ? (
+            <button className="item-action-btn add" onClick={(e) => { e.stopPropagation(); handleSelect(node.path!); }} title="Add to Context">
+              <Plus size={14} />
+            </button>
+          ) : (
+            <button className="item-action-btn added" onClick={(e) => { e.stopPropagation(); sendHiddenCommand(`/drop ${node.path}`); }} title="Remove from Context"><Check size={14} /></button>
+          )}
+        </div>
+      );
+    });
+  };
+
+  const renderSearchResults = () => {
+    if (fuzzyResults.length === 0) return <div className="empty-state">No files found.</div>;
+    return fuzzyResults.map((path, i) => {
+      const isAdded = activeFiles.includes(path);
+      const parts = path.replace(/\\/g, '/').split('/');
+      const name = parts.pop();
+      const folder = parts.join('/');
+
+      return (
+        <div key={path} className={`tree-item file search-result ${i === selectedIndex ? 'selected' : ''} ${isAdded ? 'in-context' : ''}`} onClick={() => !isAdded && handleSelect(path)} onMouseEnter={() => setSelectedIndex(i)}>
+          <div className="tree-item-left" title={path}>
+            <FileCode2 size={14} className="tree-item-icon file-icon" />
+            <div className="search-result-text">
+              <span className="tree-item-name">{name}</span>
+              {folder && <span className="tree-item-folder">{folder}</span>}
+            </div>
+          </div>
+          {!isAdded ? (
+            <button className="item-action-btn add" onClick={(e) => { e.stopPropagation(); handleSelect(path); }}><Plus size={14} /></button>
+          ) : (
+            <button className="item-action-btn added" onClick={(e) => { e.stopPropagation(); sendHiddenCommand(`/drop ${path}`); }} title="Remove from Context"><Check size={14} /></button>
+          )}
+        </div>
+      );
+    });
+  };
+
+  const renderContextTree = (nodes: Record<string, TreeNode>, depth = 0) => {
+    const sortedNodes = Object.values(nodes).sort((a, b) => {
+      if (a.isFile === b.isFile) return a.name.localeCompare(b.name);
+      return a.isFile ? 1 : -1;
+    });
+
+    return sortedNodes.map((node) => {
+      const isExpanded = !collapsedContextFolders.has(node.folderPath || '');
+
+      if (!node.isFile) {
+        return (
+          <React.Fragment key={`ctx-${depth}-${node.name}`}>
+            <div className="tree-item folder" style={{ paddingLeft: `${depth * 12 + 12}px` }} onClick={() => toggleContextFolder(node.folderPath!)}>
+              <div className="tree-item-left" title={node.folderPath!}>
+                {isExpanded ? <ChevronDown size={14} className="tree-item-icon" /> : <ChevronRight size={14} className="tree-item-icon" />}
+                <Folder size={14} className="tree-item-icon" />
+                <span className="tree-item-name">{node.name}</span>
+              </div>
+              <button 
+                className="item-action-btn remove" 
+                onClick={(e) => { 
+                  e.stopPropagation(); 
+                  const removeFolderFiles = (n: TreeNode) => {
+                    if (n.isFile) sendHiddenCommand(`/drop ${n.path}`);
+                    else Object.values(n.children).forEach(removeFolderFiles);
+                  };
+                  removeFolderFiles(node);
+                }} 
+                title="Remove folder from context"
+              >
+                <X size={14} />
+              </button>
+            </div>
+            {isExpanded && renderContextTree(node.children, depth + 1)}
+          </React.Fragment>
+        );
+      }
+
+      return (
+        <div key={`ctx-${node.path}`} className="tree-item file in-context" style={{ paddingLeft: `${depth * 12 + 34}px` }}>
+          <div className="tree-item-left" title={node.path!}>
+            <FileCode2 size={14} className="tree-item-icon file-icon" />
+            <span className="tree-item-name">{node.name}</span>
+          </div>
+          <button className="item-action-btn remove" onClick={(e) => { e.stopPropagation(); sendHiddenCommand(`/drop ${node.path}`); }} title="Remove from Context">
             <X size={14} />
           </button>
         </div>
-        {Object.keys(node.children).length > 0 && renderTree(node.children, depth + 1)}
-      </React.Fragment>
-    ));
+      );
+    });
   };
 
   return (
-    <aside 
-      className="sidebar" 
-      style={{ 
-        width: sidebarWidth, 
-        marginLeft: sidebarVisible ? 0 : -sidebarWidth,
-        transition: isResizing ? 'none' : 'margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-      }}
-    >
+    <aside className="sidebar" style={{ width: sidebarWidth, marginLeft: sidebarVisible ? 0 : -sidebarWidth, transition: isResizing ? 'none' : 'margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}>
 
-      <div className="workspace-section" style={{ flex: workspaceCollapsed ? '0 0 auto' : verticalRatio }}>
-        <div className="section-header" onClick={() => setWorkspaceCollapsed(!workspaceCollapsed)} style={{ cursor: 'pointer', userSelect: 'none' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+      {/* WORKSPACE SECTION */}
+      <div className={`sidebar-section workspace-section ${workspaceCollapsed ? 'collapsed' : ''}`} style={{ flex: workspaceCollapsed ? undefined : `${verticalRatio} 1 0px` }}>
+        <div className="section-header" onClick={() => setWorkspaceCollapsed(!workspaceCollapsed)}>
+          <div className="section-header-left">
             {workspaceCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
-            <Folder size={13} className="tree-item-icon" />
             <span className="section-title truncate" title={workspace || "Workspace"}>
               {workspace ? workspace.split(/[/\\]/).filter(Boolean).pop() : "Workspace"}
             </span>
           </div>
         </div>
         
-        {!workspaceCollapsed && (workspace ? (
-          <>
-            <div className="workspace-search">
-              <Search size={14} />
-              <input 
-                type="text" 
-                placeholder="Search files..." 
-                value={query}
-                onFocus={() => {
-                  if (fuzzyResults.length === 0) searchFiles(query);
-                }}
-                onChange={(e) => {
-                  setQuery(e.target.value);
-                  searchFiles(e.target.value);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "ArrowDown") { e.preventDefault(); setSelectedIndex(p => Math.min(p + 1, Math.max(0, treeItems.length - 1))); }
-                  else if (e.key === "ArrowUp") { e.preventDefault(); setSelectedIndex(p => Math.max(p - 1, 0)); }
-                  else if (e.key === "Enter" && treeItems[selectedIndex]) { 
-                    e.preventDefault(); 
-                    if (treeItems[selectedIndex].isFile) handleSelect(treeItems[selectedIndex].path); 
-                  }
-                }}
-              />
-            </div>
-
-            <div className="scrollable-list">
-              {treeItems.length === 0 ? <div className="empty-state">No files found.</div> : (
-                treeItems.map((item, i) => {
-                  const isAdded = item.isFile && activeFiles.includes(item.path);
-                  return (
-                    <div key={item.path} className={`tree-item ${i === selectedIndex ? 'selected' : ''} ${isAdded ? 'in-context' : ''}`} 
-                      style={{ paddingLeft: `${8 + item.depth * 12}px` }}
-                      onClick={() => item.isFile && handleSelect(item.path)}
-                      onMouseEnter={() => setSelectedIndex(i)}
-                    >
-                      <div className="tree-item-left">
-                        {item.isFile ? <FileCode2 size={14} className="tree-item-icon" /> : <Folder size={14} className="tree-item-icon" />}
-                        <span className="tree-item-name">{item.name}</span>
-                      </div>
-                      {item.isFile && (
-                        <button 
-                          className={`item-action-btn ${isAdded ? 'added' : 'add'}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (!isAdded) handleSelect(item.path);
-                          }}
-                          title={isAdded ? "In Context" : "Add to Context"}
-                        >
-                          {isAdded ? <Check size={14} /> : <Plus size={14} />}
-                        </button>
-                      )}
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </>
-        ) : (
-          <div className="empty-state">
-            No workspace opened
-          </div>
-        ))}
+        {!workspaceCollapsed && (
+          workspace ? (
+            <>
+              <div className="workspace-search-container">
+                <div className="workspace-search">
+                  <Search size={14} className="search-icon" />
+                  <input 
+                    type="text" placeholder="Search files..." value={query}
+                    onFocus={() => { if (fuzzyResults.length === 0) searchFiles(query); }}
+                    onChange={(e) => { setQuery(e.target.value); searchFiles(e.target.value); }}
+                    onKeyDown={(e) => {
+                      if (query.trim() === '') return;
+                      if (e.key === "ArrowDown") { e.preventDefault(); setSelectedIndex(p => Math.min(p + 1, fuzzyResults.length - 1)); }
+                      else if (e.key === "ArrowUp") { e.preventDefault(); setSelectedIndex(p => Math.max(p - 1, 0)); }
+                      else if (e.key === "Enter" && fuzzyResults[selectedIndex]) { e.preventDefault(); handleSelect(fuzzyResults[selectedIndex]); }
+                    }}
+                  />
+                  {query && <X size={14} className="clear-icon" onClick={() => { setQuery(''); searchFiles(''); }} />}
+                </div>
+              </div>
+              <div className="scrollable-list">
+                {query.trim() !== '' ? renderSearchResults() : (explorerTree ? renderExplorerTree(explorerTree) : null)}
+              </div>
+            </>
+          ) : (
+            <div className="empty-state">No workspace opened</div>
+          )
+        )}
       </div>
 
       {!workspaceCollapsed && !contextCollapsed && (
-        <div 
-          className={`sidebar-vertical-resize-handle ${isResizingVertical ? "is-resizing" : ""}`}
-          onMouseDown={(e) => { e.preventDefault(); setIsResizingVertical(true); }}
-        />
+        <div className={`sidebar-vertical-resize-handle ${isResizingVertical ? "is-resizing" : ""}`} onMouseDown={(e) => { e.preventDefault(); setIsResizingVertical(true); }} />
       )}
 
-      <div className="context-section" style={{ flex: contextCollapsed ? '0 0 auto' : (1 - verticalRatio) }}>
-        <div className="section-header">
-          <div onClick={() => setContextCollapsed(!contextCollapsed)} style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', userSelect: 'none' }}>
+      {/* CONTEXT SECTION */}
+      <div className={`sidebar-section context-section ${contextCollapsed ? 'collapsed' : ''}`} style={{ flex: contextCollapsed ? undefined : `${1 - verticalRatio} 1 0px` }}>
+        <div className="section-header" onClick={() => setContextCollapsed(!contextCollapsed)}>
+          <div className="section-header-left">
             {contextCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
             <span className="section-title">Context ({activeFiles.length})</span>
           </div>
           <div style={{ display: 'flex', gap: '4px' }}>
             <button 
               className="icon-btn-small" 
-              onClick={() => setViewMode(v => v === 'flat' ? 'tree' : 'flat')} 
+              onClick={(e) => { e.stopPropagation(); setViewMode(v => v === 'flat' ? 'tree' : 'flat'); }} 
               title={`Switch to ${viewMode === 'flat' ? 'tree' : 'flat'} view`}
             >
               {viewMode === 'flat' ? <ListTree size={16} /> : <List size={16} />}
@@ -279,25 +355,35 @@ export const Sidebar = () => {
               {activeFiles.length === 0 ? (
                 <div className="empty-state">No files loaded.</div>
               ) : viewMode === 'flat' ? (
-                activeFiles.map((f, i) => (
-                  <div key={i} className="tree-item in-context" onClick={() => sendHiddenCommand(`/drop ${f}`)}>
-                    <div className="tree-item-left" title={f}>
-                      <FileCode2 size={14} className="tree-item-icon" />
-                      <span className="tree-item-name">{f.split(/[/\\]/).pop()}</span>
+                activeFiles.map((f, i) => {
+                  const parts = f.replace(/\\/g, '/').split('/');
+                  const name = parts.pop();
+                  const folder = parts.join('/');
+                  return (
+                    <div key={i} className="tree-item file in-context" style={{ paddingLeft: '16px' }}>
+                      <div className="tree-item-left" title={f}>
+                        <FileCode2 size={14} className="tree-item-icon file-icon" />
+                        <div className="search-result-text">
+                          <span className="tree-item-name">{name}</span>
+                          {folder && <span className="tree-item-folder">{folder}</span>}
+                        </div>
+                      </div>
+                      <button className="item-action-btn remove" onClick={(e) => { e.stopPropagation(); sendHiddenCommand(`/drop ${f}`); }} title="Remove from context">
+                        <X size={14} />
+                      </button>
                     </div>
-                    <button className="item-action-btn remove" onClick={(e) => { e.stopPropagation(); sendHiddenCommand(`/drop ${f}`); }} title="Remove from context">
-                      <X size={14} />
-                    </button>
-                  </div>
-                ))
+                  );
+                })
               ) : (
-                renderTree(buildTree(activeFiles))
+                contextTree && renderContextTree(contextTree)
               )}
             </div>
             
-            <button className="reset-context-btn" onClick={() => sendHiddenCommand(`/reset`)} title="Clear all context files">
-              <RefreshCcw size={14} /> Reset Context
-            </button>
+            {activeFiles.length > 0 && (
+              <button className="reset-context-btn" onClick={() => sendHiddenCommand(`/reset`)} title="Clear all context files">
+                <RefreshCcw size={14} /> Reset Context
+              </button>
+            )}
           </>
         )}
       </div>
@@ -318,10 +404,7 @@ export const Sidebar = () => {
         </div>
       </div>
 
-      <div 
-        className={`sidebar-resize-handle ${isResizing ? "is-resizing" : ""}`}
-        onMouseDown={(e) => { e.preventDefault(); setIsResizing(true); }}
-      />
+      <div className={`sidebar-resize-handle ${isResizing ? "is-resizing" : ""}`} onMouseDown={(e) => { e.preventDefault(); setIsResizing(true); }} />
     </aside>
   );
 };
