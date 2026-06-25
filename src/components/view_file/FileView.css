@@ -5,55 +5,225 @@
   width: 100%;
   background-color: var(--bg-app);
   overflow: hidden;
+  font-family: var(--font-sans);
 }
 
+/* Header & Tabs */
 .file-view-header {
-  padding: var(--space-sm) var(--space-md);
-  background-color: var(--bg-surface);
+  background-color: #18181a;
   border-bottom: 1px solid var(--border-light);
   display: flex;
+  align-items: flex-end;
+  flex-shrink: 0;
+  overflow-x: auto;
+  scrollbar-width: none; /* Firefox */
+}
+
+.file-view-header::-webkit-scrollbar {
+  display: none; /* WebKit */
+}
+
+.file-view-tab {
+  padding: 8px 16px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  background-color: #1e1e20;
+  border-right: 1px solid var(--border-light);
+  border-top: 1px solid transparent;
+  display: flex;
   align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  user-select: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  min-width: 120px;
+  max-width: 200px;
+}
+
+.file-view-tab::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: transparent;
+  transition: background-color 0.2s ease;
+}
+
+.file-view-tab:hover {
+  background-color: #252528;
+  color: var(--text-primary);
+}
+
+.file-view-tab.active {
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--bg-app);
+  margin-bottom: -1px;
+}
+
+.file-view-tab.active::before {
+  background-color: var(--primary, #3b82f6);
+}
+
+/* File Icon */
+.file-icon {
+  width: 14px;
+  height: 14px;
+  opacity: 0.8;
   flex-shrink: 0;
 }
 
-.file-view-title {
-  font-size: var(--font-size-sm);
-  color: var(--text-primary);
-  font-family: var(--font-mono);
-  opacity: 0.8;
+.tab-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
 }
 
+/* Close button */
+.file-view-tab-close {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  opacity: 0;
+  color: var(--text-secondary);
+  transition: all 0.15s ease;
+}
+
+.file-view-tab:hover .file-view-tab-close,
+.file-view-tab.active .file-view-tab-close {
+  opacity: 0.6;
+}
+
+.file-view-tab-close:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  opacity: 1 !important;
+  color: var(--danger, #ef4444);
+}
+
+.file-view-tab-close svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* Content Area */
 .file-view-content {
   flex: 1;
   overflow: auto;
   position: relative;
-  background-color: #121212;
+  background-color: var(--bg-app, #121212);
+}
+
+/* Custom Scrollbar for content */
+.file-view-content::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+.file-view-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+.file-view-content::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 3px solid var(--bg-app, #121212);
+  border-radius: 6px;
+}
+.file-view-content::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Loading & Error & Empty States */
+.file-view-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-secondary);
+  gap: 16px;
+  opacity: 0.6;
+}
+
+.file-view-empty svg {
+  width: 64px;
+  height: 64px;
+  stroke-width: 1;
 }
 
 .file-view-loading,
 .file-view-error {
-  margin: var(--space-lg);
+  margin: 32px;
+  padding: 24px;
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.03);
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .file-view-error {
-  color: var(--danger);
-  border-color: var(--danger-glow);
+  color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
+.spinner {
+  animation: spin 1s linear infinite;
+  width: 20px;
+  height: 20px;
+}
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
+
+/* Shiki Styling */
 .shiki-container {
   min-height: 100%;
-  font-family: var(--font-mono);
-  font-size: 13px;
-  line-height: 1.5;
+  font-family: var(--font-mono, 'JetBrains Mono', 'Fira Code', Consolas, monospace);
+  font-size: 14px;
+  line-height: 1.6;
+  padding-bottom: 2rem;
 }
 
 .shiki-container pre {
   margin: 0;
-  padding: var(--space-md);
+  padding: 16px 0;
   min-height: 100%;
   background-color: transparent !important;
 }
 
 .shiki-container code {
   font-family: inherit;
+  display: block;
+  counter-reset: step;
+  counter-increment: step 0;
+}
+
+.shiki-container code .line {
+  counter-increment: step;
+  padding: 0 16px;
+  display: inline-block;
+  width: 100%;
+  min-height: 1.6em;
+}
+
+.shiki-container code .line:hover {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.shiki-container code .line::before {
+  content: counter(step);
+  display: inline-block;
+  width: 2.5rem;
+  margin-right: 1.5rem;
+  text-align: right;
+  color: var(--text-secondary);
+  opacity: 0.4;
+  user-select: none;
+  font-size: 0.85em;
 }

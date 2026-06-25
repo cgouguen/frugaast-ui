@@ -1,10 +1,10 @@
 import React from "react";
 import { useApp } from "../../context/AppContext";
-import { MessageSquare, Map, Activity, Clipboard } from "lucide-react";
+import { MessageSquare, Map, Activity, Clipboard, FileText } from "lucide-react";
 import "./TopBar.css";
 
 export const TopBar = () => {
-  const { mainView, setMainView, status, isGenerating, workspace, sendHiddenCommand } = useApp();
+  const { mainView, setMainView, status, isGenerating, workspace, sendHiddenCommand, openedFile } = useApp();
 
   return (
     <header className="tabs-header">
@@ -15,6 +15,11 @@ export const TopBar = () => {
         <button className={`tab-btn ${mainView === 'repomap' ? 'active' : ''}`} onClick={() => setMainView('repomap')}>
           <Map size={16} /> Repo Map
         </button>
+        {(openedFile || mainView === 'file') && (
+          <button className={`tab-btn ${mainView === 'file' ? 'active' : ''}`} onClick={() => setMainView('file')}>
+            <FileText size={16} /> File
+          </button>
+        )}
       </div>
       
       <div className="header-actions">

@@ -33,9 +33,15 @@ function AppContent() {
         <TopBar />
         
         <div className="view-content-wrapper">
-          {mainView === "chat" && <ChatView />}
-          {mainView === "repomap" && <RepoMapView />}
-          {mainView === "file" && <FileView />}
+          <div style={{ display: mainView === "chat" ? "contents" : "none" }}>
+            <ChatView />
+          </div>
+          <div style={{ display: mainView === "repomap" ? "contents" : "none" }}>
+            <RepoMapView />
+          </div>
+          <div style={{ display: mainView === "file" ? "contents" : "none" }}>
+            <FileView />
+          </div>
         </div>
 
         <GlobalInput />
