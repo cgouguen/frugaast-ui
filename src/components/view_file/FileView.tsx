@@ -87,6 +87,11 @@ export const FileView = () => {
   const [loading, setLoading] = useState<boolean>(false);
 
   useEffect(() => {
+    setTabs([]);
+    setActiveTab(null);
+  }, [workspace]);
+
+  useEffect(() => {
     if (openedFile) {
       setTabs(prev => {
         if (!prev.includes(openedFile)) {

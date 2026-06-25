@@ -8,19 +8,19 @@ export const TopBar = () => {
 
   return (
     <header className="tabs-header">
-      <div className="tabs-list">
+      <nav className="tabs-list">
         <button className={`tab-btn ${mainView === 'chat' ? 'active' : ''}`} onClick={() => setMainView('chat')}>
-          <MessageSquare size={16} /> Chat
+          <MessageSquare size={16} /> <span>Chat</span>
         </button>
         <button className={`tab-btn ${mainView === 'repomap' ? 'active' : ''}`} onClick={() => setMainView('repomap')}>
-          <Map size={16} /> Repo Map
+          <Map size={16} /> <span>Prompt Builder</span>
         </button>
         {(openedFile || mainView === 'file') && (
           <button className={`tab-btn ${mainView === 'file' ? 'active' : ''}`} onClick={() => setMainView('file')}>
-            <FileText size={16} /> File
+            <FileText size={16} /> <span>Files</span>
           </button>
         )}
-      </div>
+      </nav>
       
       <div className="header-actions">
         <div className="status-indicator">
@@ -29,12 +29,12 @@ export const TopBar = () => {
         </div>
         {mainView === 'chat' && (
           <button className="action-btn" onClick={() => sendHiddenCommand(`/copy-build-message`)} title="Copy Build Messages">
-            <Clipboard size={14} /> Copy Data
+            <Clipboard size={14} /> <span>Copy Data</span>
           </button>
         )}
         {mainView === 'repomap' && (
           <button className="action-btn" onClick={() => sendHiddenCommand(`/copy-repomap`)} title="Copy Repo Map" disabled={!workspace}>
-            <Clipboard size={14} /> Copy Map
+            <Clipboard size={14} /> <span>Copy Map</span>
           </button>
         )}
       </div>

@@ -9,10 +9,11 @@ import { FileView } from "./components/view_file/FileView";
 import { GlobalInput } from "./components/view_chat/GlobalInput";
 import { ApprovalModal } from "./components/modals/ApprovalModal";
 import { SettingsModal } from "./components/modals/SettingsModal";
+import { RightSidebar } from "./components/layout/RightSidebar";
 import "./App.css";
 
 function AppContent() {
-  const { mainView, sidebarVisible, setSidebarVisible } = useApp();
+  const { mainView, sidebarVisible, setSidebarVisible, rightSidebarVisible, setRightSidebarVisible } = useApp();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -21,15 +22,20 @@ function AppContent() {
         e.preventDefault();
         setSidebarVisible(!sidebarVisible);
       }
+      // Ctrl+J = toggle right sidebar
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'j') {
+        e.preventDefault();
+        setRightSidebarVisible(!rightSidebarVisible);
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [sidebarVisible, setSidebarVisible]);
+  }, [sidebarVisible, setSidebarVisible, rightSidebarVisible, setRightSidebarVisible]);
 
   return (
-    <div className="app-layout" style={{ flex: 1, height: 'calc(100vh - 32px)', overflow: 'hidden' }}>
+    <div className="app-layout" style={{ flex: 1, height: 'calc(100vh - 32px)', overflow: 'hidden', display: 'flex' }}>
       <Sidebar />
-      <main className="main-area">
+      <main className="main-area" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         <TopBar />
         
         <div className="view-content-wrapper">
@@ -46,6 +52,8 @@ function AppContent() {
 
         <GlobalInput />
       </main>
+
+      <RightSidebar />
 
       <ApprovalModal />
       <SettingsModal />

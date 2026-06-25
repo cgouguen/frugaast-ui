@@ -356,7 +356,11 @@ export const Sidebar = () => {
               {activeFiles.length === 0 ? (
                 <div className="empty-state">No files loaded.</div>
               ) : viewMode === 'flat' ? (
-                activeFiles.map((f, i) => {
+                [...activeFiles].sort((a, b) => {
+                  const nameA = a.replace(/\\/g, '/').split('/').pop() || '';
+                  const nameB = b.replace(/\\/g, '/').split('/').pop() || '';
+                  return nameA.localeCompare(nameB);
+                }).map((f, i) => {
                   const parts = f.replace(/\\/g, '/').split('/');
                   const name = parts.pop();
                   const folder = parts.join('/');

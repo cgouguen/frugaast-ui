@@ -22,6 +22,8 @@ interface AppContextType {
   isRepomapReq: boolean;
   sidebarVisible: boolean;
   setSidebarVisible: (show: boolean) => void;
+  rightSidebarVisible: boolean;
+  setRightSidebarVisible: (show: boolean) => void;
   showFuzzySearch: boolean;
   setShowFuzzySearch: (show: boolean) => void;
   fuzzyResults: string[];
@@ -65,6 +67,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const [repomapContent, setRepomapContent] = useState("");
   
   const [sidebarVisible, setSidebarVisible] = useState(true);
+  const [rightSidebarVisible, setRightSidebarVisible] = useState(true);
   const [showFuzzySearch, setShowFuzzySearch] = useState(false);
   const [fuzzyResults, setFuzzyResults] = useState<string[]>([]);
   const [autocompleteResults, setAutocompleteResults] = useState<string[]>([]);
@@ -171,7 +174,10 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   // --- Actions ---
   const sendHiddenCommand = (cmd: string) => sendCommand(wsRef.current, { command: "chat", input: cmd, mode: "ask" });
   
-  const initWorkspace = (path: string) => sendCommand(wsRef.current, { command: "init_workspace", path });
+  const initWorkspace = (path: string) => {
+    setOpenedFile(null);
+    sendCommand(wsRef.current, { command: "init_workspace", path });
+  };
   
   const searchFiles = (query: string) => sendCommand(wsRef.current, { command: "fuzzy_search_files", query });
 
@@ -218,7 +224,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     <AppContext.Provider value={{
       isConnected, status, workspace, setWorkspace, isGenerating, mainView, setMainView,
       chat, setChat, activeFiles, stats, approvalReq, maxMapTokens, setMaxMapTokens,
-      repomapContent, isRepomapReq: isRepomapReqRef.current, sidebarVisible, setSidebarVisible, showFuzzySearch, setShowFuzzySearch,
+      repomapContent, isRepomapReq: isRepomapReqRef.current, sidebarVisible, setSidebarVisible, rightSidebarVisible, setRightSidebarVisible, showFuzzySearch, setShowFuzzySearch,
       fuzzyResults, autocompleteResults, initWorkspace, sendHiddenCommand, sendMessage, fetchRepoMap, handleCancel,
       handleApproval, searchFiles, fetchAutocomplete, clearAutocomplete, config, getConfig, updateConfig,
       showSettings, setShowSettings, openedFile, setOpenedFile, openFile
