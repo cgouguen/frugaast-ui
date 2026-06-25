@@ -83,7 +83,14 @@
   flex: 1;
 }
 
-/* Close button */
+/* Tab Actions */
+.file-view-tab-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.file-view-tab-action,
 .file-view-tab-close {
   width: 20px;
   height: 20px;
@@ -96,17 +103,30 @@
   transition: all 0.15s ease;
 }
 
+.file-view-tab-action.in-context {
+  opacity: 1;
+  color: var(--primary, #3b82f6);
+}
+
+.file-view-tab:hover .file-view-tab-action,
+.file-view-tab.active .file-view-tab-action,
 .file-view-tab:hover .file-view-tab-close,
 .file-view-tab.active .file-view-tab-close {
   opacity: 0.6;
 }
 
+.file-view-tab-action.in-context:hover,
+.file-view-tab-action:hover,
 .file-view-tab-close:hover {
   background-color: rgba(255, 255, 255, 0.1);
   opacity: 1 !important;
+}
+
+.file-view-tab-close:hover {
   color: var(--danger, #ef4444);
 }
 
+.file-view-tab-action svg,
 .file-view-tab-close svg {
   width: 12px;
   height: 12px;

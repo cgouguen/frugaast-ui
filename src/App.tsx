@@ -6,7 +6,6 @@ import { TopBar } from "./components/layout/TopBar";
 import { ChatView } from "./components/view_chat/ChatView";
 import { RepoMapView } from "./components/view_repomap/RepoMapView";
 import { FileView } from "./components/view_file/FileView";
-import { GlobalInput } from "./components/view_chat/GlobalInput";
 import { ApprovalModal } from "./components/modals/ApprovalModal";
 import { SettingsModal } from "./components/modals/SettingsModal";
 import { RightSidebar } from "./components/layout/RightSidebar";
@@ -49,8 +48,6 @@ function AppContent() {
             <FileView />
           </div>
         </div>
-
-        <GlobalInput />
       </main>
 
       <RightSidebar />

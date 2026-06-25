@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from "react";
 import { useApp } from "../../context/AppContext";
 import { ChatMessage } from "./ChatMessage";
 import { Terminal, Trash2 } from "lucide-react";
+import { ChatInput } from "./ChatInput";
 import "./ChatView.css";
 
 export const ChatView = () => {
@@ -19,8 +20,9 @@ export const ChatView = () => {
   };
 
   return (
-    <div className="chat-scroll-area">
-      {chat.length === 0 && (
+    <div className="chat-view-wrapper">
+      <div className="chat-scroll-area">
+        {chat.length === 0 && (
         <div className="welcome-screen">
           <div className="welcome-icon-wrapper">
             <Terminal size={40} />
@@ -43,6 +45,8 @@ export const ChatView = () => {
         ))}
         <div ref={chatEndRef} />
       </div>
+      </div>
+      <ChatInput />
     </div>
   );
 };

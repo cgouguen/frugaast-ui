@@ -1,12 +1,9 @@
-// Deprecated: This file has been replaced by ChatInput.tsx
-export {};
-/*
 import React, { useState, useEffect, useRef } from "react";
 import { useApp } from "../../context/AppContext";
 import { Send, Square, MessageSquare, Code } from "lucide-react";
-import "./GlobalInput.css";
+import "./ChatInput.css";
 
-export const GlobalInput = () => {
+export const ChatInput = () => {
   const { 
     isConnected, isGenerating, isRepomapReq, approvalReq, 
     sendMessage, handleCancel, chat, 
@@ -162,7 +159,7 @@ export const GlobalInput = () => {
   };
 
   return (
-    <div className="global-input-wrapper">
+    <div className="chat-input-wrapper">
       <div className="input-box">
         {showAutocomplete && autocompleteResults.length > 0 && (
           <div className="autocomplete-popup">
@@ -224,4 +221,3 @@ export const GlobalInput = () => {
     </div>
   );
 };
-*/

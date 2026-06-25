@@ -13,7 +13,7 @@ export const TopBar = () => {
           <MessageSquare size={16} /> <span>Chat</span>
         </button>
         <button className={`tab-btn ${mainView === 'repomap' ? 'active' : ''}`} onClick={() => setMainView('repomap')}>
-          <Map size={16} /> <span>Prompt Builder</span>
+          <Map size={16} /> <span>Repo Map</span>
         </button>
         {(openedFile || mainView === 'file') && (
           <button className={`tab-btn ${mainView === 'file' ? 'active' : ''}`} onClick={() => setMainView('file')}>

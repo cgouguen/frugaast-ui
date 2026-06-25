@@ -1,6 +1,6 @@
-/* Deprecated: This file has been replaced by ChatInput.css */
-/*
-.global-input-wrapper {
+/* ChatInput.css */
+/* ================== CHAT INPUT SECTION ================== */
+.chat-input-wrapper {
   flex-shrink: 0; padding: 0 var(--space-xl) var(--space-xl) var(--space-xl); display: flex; justify-content: center;
   background: linear-gradient(180deg, transparent, var(--bg-app) 20%); z-index: 20;
 }
@@ -144,4 +144,3 @@
 .send-btn:disabled { background: var(--bg-surface); color: var(--text-muted); cursor: not-allowed; box-shadow: none; }
 .send-btn.stop { background: var(--danger); color: white; }
 .send-btn.stop:hover { box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3); }
-*/

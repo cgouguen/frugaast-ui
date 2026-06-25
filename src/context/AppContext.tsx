@@ -32,7 +32,7 @@ interface AppContextType {
   initWorkspace: (path: string) => void;
   sendHiddenCommand: (cmd: string) => void;
   sendMessage: (input: string, mode: string) => void;
-  fetchRepoMap: () => void;
+  fetchRepoMap: (prompt?: string) => void;
   handleCancel: () => void;
   handleApproval: (approved: boolean) => void;
   searchFiles: (query: string) => void;
@@ -103,7 +103,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       wsRef.current = ws;
       ws.onopen = () => { 
         setIsConnected(true); 
-        setStatus("Ready"); 
+          ("Ready"); 
         ws.send(JSON.stringify({ command: "get_config" }));
       };
       ws.onmessage = (event) => handleServerEvent(JSON.parse(event.data));
@@ -192,12 +192,10 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     setMainView("file");
   };
 
-  const fetchRepoMap = () => {
-    if (isGenerating) return;
+  const fetchRepoMap = (prompt: string = "") => {
+    if (isGenerating && !isRepomapReqRef.current) return;
     isRepomapReqRef.current = true;
     setRepomapContent("");
-    const chatInput = document.querySelector('.chat-input') as HTMLTextAreaElement;
-    const prompt = chatInput ? chatInput.value : "";
     sendCommand(wsRef.current, { command: "chat", input: prompt, mode: "repomap", max_map_token: maxMapTokens });
     setIsGenerating(true); setStatus("Generating RepoMap...");
   };
