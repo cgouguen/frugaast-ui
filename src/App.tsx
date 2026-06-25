@@ -3,9 +3,10 @@ import { AppProvider, useApp } from "./context/AppContext";
 import { TitleBar } from "./components/layout/TitleBar";
 import { Sidebar } from "./components/layout/Sidebar";
 import { TopBar } from "./components/layout/TopBar";
-import { ChatView } from "./components/chat/ChatView";
-import { RepoMapView } from "./components/repomap/RepoMapView";
-import { GlobalInput } from "./components/chat/GlobalInput";
+import { ChatView } from "./components/view_chat/ChatView";
+import { RepoMapView } from "./components/view_repomap/RepoMapView";
+import { FileView } from "./components/view_file/FileView";
+import { GlobalInput } from "./components/view_chat/GlobalInput";
 import { ApprovalModal } from "./components/modals/ApprovalModal";
 import { SettingsModal } from "./components/modals/SettingsModal";
 import "./App.css";
@@ -32,7 +33,9 @@ function AppContent() {
         <TopBar />
         
         <div className="view-content-wrapper">
-          {mainView === "chat" ? <ChatView /> : <RepoMapView />}
+          {mainView === "chat" && <ChatView />}
+          {mainView === "repomap" && <RepoMapView />}
+          {mainView === "file" && <FileView />}
         </div>
 
         <GlobalInput />

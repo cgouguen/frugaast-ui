@@ -42,6 +42,9 @@ interface AppContextType {
   updateConfig: (scope: "local" | "global", updates: Record<string, any>) => void;
   showSettings: boolean;
   setShowSettings: (show: boolean) => void;
+  openedFile: string | null;
+  setOpenedFile: (f: string | null) => void;
+  openFile: (f: string) => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -67,6 +70,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const [autocompleteResults, setAutocompleteResults] = useState<string[]>([]);
   const [config, setConfig] = useState<Record<string, any>>({});
   const [showSettings, setShowSettings] = useState(false);
+  const [openedFile, setOpenedFile] = useState<string | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
   const childRef = useRef<any>(null);
@@ -177,6 +181,11 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const getConfig = () => sendCommand(wsRef.current, { command: "get_config" });
   const updateConfig = (scope: "local" | "global", updates: Record<string, any>) => sendCommand(wsRef.current, { command: "update_config", scope, updates });
 
+  const openFile = (file: string) => {
+    setOpenedFile(file);
+    setMainView("file");
+  };
+
   const fetchRepoMap = () => {
     if (isGenerating) return;
     isRepomapReqRef.current = true;
@@ -212,7 +221,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       repomapContent, isRepomapReq: isRepomapReqRef.current, sidebarVisible, setSidebarVisible, showFuzzySearch, setShowFuzzySearch,
       fuzzyResults, autocompleteResults, initWorkspace, sendHiddenCommand, sendMessage, fetchRepoMap, handleCancel,
       handleApproval, searchFiles, fetchAutocomplete, clearAutocomplete, config, getConfig, updateConfig,
-      showSettings, setShowSettings
+      showSettings, setShowSettings, openedFile, setOpenedFile, openFile
     }}>
       {children}
     </AppContext.Provider>

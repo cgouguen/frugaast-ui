@@ -13,6 +13,12 @@
 
     "opener:default",
     "dialog:default",
+    
+    "fs:default",
+    {
+      "identifier": "fs:allow-read",
+      "allow": [{ "path": "$FS_ROOT/**" }]
+    },
 
     {
       "identifier": "shell:allow-spawn",

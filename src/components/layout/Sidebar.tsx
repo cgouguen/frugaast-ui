@@ -15,7 +15,8 @@ type TreeNode = {
 export const Sidebar = () => {
   const { 
     isConnected, searchFiles, stats, sendHiddenCommand,
-    sidebarVisible, fuzzyResults, workspace, activeFiles
+    sidebarVisible, fuzzyResults, workspace, activeFiles,
+    openFile
   } = useApp();
 
   const [sidebarWidth, setSidebarWidth] = useState(280);
@@ -187,7 +188,7 @@ export const Sidebar = () => {
       }
 
       return (
-        <div key={node.path} className={`tree-item file ${isAdded ? 'in-context' : ''}`} style={{ paddingLeft: `${depth * 12 + 34}px` }} onClick={() => !isAdded && handleSelect(node.path!)}>
+        <div key={node.path} className={`tree-item file ${isAdded ? 'in-context' : ''}`} style={{ paddingLeft: `${depth * 12 + 34}px` }} onClick={() => openFile(node.path!)}>
           <div className="tree-item-left" title={node.path!}>
             <FileCode2 size={14} className="tree-item-icon file-icon" />
             <span className="tree-item-name">{node.name}</span>
@@ -213,7 +214,7 @@ export const Sidebar = () => {
       const folder = parts.join('/');
 
       return (
-        <div key={path} className={`tree-item file search-result ${i === selectedIndex ? 'selected' : ''} ${isAdded ? 'in-context' : ''}`} onClick={() => !isAdded && handleSelect(path)} onMouseEnter={() => setSelectedIndex(i)}>
+        <div key={path} className={`tree-item file search-result ${i === selectedIndex ? 'selected' : ''} ${isAdded ? 'in-context' : ''}`} onClick={() => openFile(path)} onMouseEnter={() => setSelectedIndex(i)}>
           <div className="tree-item-left" title={path}>
             <FileCode2 size={14} className="tree-item-icon file-icon" />
             <div className="search-result-text">
@@ -270,7 +271,7 @@ export const Sidebar = () => {
       }
 
       return (
-        <div key={`ctx-${node.path}`} className="tree-item file in-context" style={{ paddingLeft: `${depth * 12 + 34}px` }}>
+        <div key={`ctx-${node.path}`} className="tree-item file in-context" style={{ paddingLeft: `${depth * 12 + 34}px` }} onClick={() => openFile(node.path!)}>
           <div className="tree-item-left" title={node.path!}>
             <FileCode2 size={14} className="tree-item-icon file-icon" />
             <span className="tree-item-name">{node.name}</span>
@@ -311,7 +312,7 @@ export const Sidebar = () => {
                       if (query.trim() === '') return;
                       if (e.key === "ArrowDown") { e.preventDefault(); setSelectedIndex(p => Math.min(p + 1, fuzzyResults.length - 1)); }
                       else if (e.key === "ArrowUp") { e.preventDefault(); setSelectedIndex(p => Math.max(p - 1, 0)); }
-                      else if (e.key === "Enter" && fuzzyResults[selectedIndex]) { e.preventDefault(); handleSelect(fuzzyResults[selectedIndex]); }
+                      else if (e.key === "Enter" && fuzzyResults[selectedIndex]) { e.preventDefault(); openFile(fuzzyResults[selectedIndex]); }
                     }}
                   />
                   {query && <X size={14} className="clear-icon" onClick={() => { setQuery(''); searchFiles(''); }} />}
@@ -360,7 +361,7 @@ export const Sidebar = () => {
                   const name = parts.pop();
                   const folder = parts.join('/');
                   return (
-                    <div key={i} className="tree-item file in-context" style={{ paddingLeft: '16px' }}>
+                    <div key={i} className="tree-item file in-context" style={{ paddingLeft: '16px' }} onClick={() => openFile(f)}>
                       <div className="tree-item-left" title={f}>
                         <FileCode2 size={14} className="tree-item-icon file-icon" />
                         <div className="search-result-text">
