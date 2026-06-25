@@ -196,7 +196,9 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     if (isGenerating) return;
     isRepomapReqRef.current = true;
     setRepomapContent("");
-    sendCommand(wsRef.current, { command: "chat", input: " ", mode: "repomap", max_map_tokens: maxMapTokens });
+    const chatInput = document.querySelector('.chat-input') as HTMLTextAreaElement;
+    const prompt = chatInput ? chatInput.value : "";
+    sendCommand(wsRef.current, { command: "chat", input: prompt, mode: "repomap", max_map_token: maxMapTokens });
     setIsGenerating(true); setStatus("Generating RepoMap...");
   };
 
