@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useApp } from "../../context/AppContext";
 import { FileCode2, Plus, List, ListTree, Search, Folder, Check, X, ChevronDown, ChevronRight, RefreshCcw } from "lucide-react";
-import "./Sidebar.css";
+import "./LeftSidebar.css";
 
 type TreeNode = {
   name: string;

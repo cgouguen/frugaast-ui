@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import { AppProvider, useApp } from "./context/AppContext";
 import { TitleBar } from "./components/layout/TitleBar";
-import { Sidebar } from "./components/layout/Sidebar";
+import { Sidebar } from "./components/layout/LeftSidebar";
 import { TopBar } from "./components/layout/TopBar";
 import { ChatView } from "./components/view_chat/ChatView";
 import { RepoMapView } from "./components/view_repomap/RepoMapView";
