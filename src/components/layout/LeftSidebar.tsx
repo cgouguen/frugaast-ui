@@ -1,7 +1,7 @@
 // src/components/layout/Sidebar.tsx
 import React, { useState, useEffect, useMemo } from "react";
 import { useApp } from "../../context/AppContext";
-import { FileCode2, Plus, List, ListTree, Search, Folder, Check, X, ChevronDown, ChevronRight, RefreshCcw } from "lucide-react";
+import { FileCode2, Plus, List, ListTree, Search, Folder, Check, X, ChevronDown, ChevronRight, RefreshCcw, Copy } from "lucide-react";
 import "./LeftSidebar.css";
 
 type TreeNode = {
@@ -33,6 +33,13 @@ export const Sidebar = () => {
 
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [collapsedContextFolders, setCollapsedContextFolders] = useState<Set<string>>(new Set());
+  const [isCopied, setIsCopied] = useState(false);
+
+  const handleCopyFiles = () => {
+    sendHiddenCommand(`/copy-context`);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
 
   // Vertical resizing handler
   useEffect(() => {
@@ -416,9 +423,14 @@ export const Sidebar = () => {
             </div>
             
             {activeFiles.length > 0 && (
-              <button className="reset-context-btn" onClick={() => sendHiddenCommand(`/reset`)} title="Clear all context files">
-                <RefreshCcw size={14} /> Reset Context
-              </button>
+              <div className="context-actions">
+                <button className={`context-action-btn ${isCopied ? 'success' : ''}`} onClick={handleCopyFiles} title="Copy context to clipboard">
+                  {isCopied ? <Check size={14} /> : <Copy size={14} />} {isCopied ? 'Copied!' : 'Copy Files'}
+                </button>
+                <button className="context-action-btn" onClick={() => sendHiddenCommand(`/reset`)} title="Clear all context files">
+                  <RefreshCcw size={14} /> Reset
+                </button>
+              </div>
             )}
           </>
         )}

@@ -243,8 +243,15 @@
 .item-action-btn.remove:hover { background: rgba(239, 68, 68, 0.15); color: var(--danger, #ef4444); }
 
 /* Context Specific */
-.reset-context-btn {
+.context-actions {
   margin: 8px 16px;
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.context-action-btn {
+  flex: 1;
   display: flex; 
   align-items: center; 
   justify-content: center; 
@@ -258,10 +265,11 @@
   font-weight: 500;
   cursor: pointer; 
   transition: all 0.2s ease;
-  flex-shrink: 0;
 }
 
-.reset-context-btn:hover { background: rgba(255, 255, 255, 0.05); color: var(--text-primary); }
+.context-action-btn:hover { background: rgba(255, 255, 255, 0.05); color: var(--text-primary); }
+.context-action-btn.success { color: var(--success, #10b981); border-color: rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.1); }
+.context-action-btn.success:hover { color: var(--success, #10b981); background: rgba(16, 185, 129, 0.15); }
 
 .icon-btn-small {
   background: transparent; border: none; color: var(--text-muted);
