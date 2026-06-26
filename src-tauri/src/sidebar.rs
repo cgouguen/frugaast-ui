@@ -1,4 +1,7 @@
 use std::path::Path;
+use std::collections::HashMap;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
 
 #[derive(serde::Serialize)]
 pub struct MessageNode {
@@ -7,6 +10,11 @@ pub struct MessageNode {
     pub role: String,
     pub msg_type: String,
     pub timestamp: String,
+    pub content: String,
+    pub model: Option<String>,
+    pub last_transaction_cost: Option<f64>,
+    pub session_cost: Option<f64>,
+    pub cost: Option<f64>,
 }
 
 #[derive(serde::Serialize)]
@@ -15,72 +23,66 @@ pub struct SessionNode {
     pub messages: Vec<MessageNode>,
 }
 
+#[derive(serde::Deserialize)]
+struct ChatEntry {
+    timestamp: String,
+    session_id: String,
+    #[serde(rename = "type")]
+    msg_type: String,
+    role: String,
+    content: String,
+    model: Option<String>,
+    last_transaction_cost: Option<f64>,
+    session_cost: Option<f64>,
+    cost: Option<f64>,
+}
+
 #[tauri::command]
 pub fn list_workspace_files(workspace: &str) -> Result<Vec<SessionNode>, String> {
-    let mut sessions = Vec::new();
     if workspace.is_empty() {
-        return Ok(sessions);
+        return Ok(Vec::new());
     }
 
-    let history_dir = Path::new(workspace).join(".frugaast").join("llm_history");
-    if !history_dir.exists() || !history_dir.is_dir() {
-        return Ok(sessions);
+    let chat_file_path = Path::new(workspace).join(".frugaast").join("chat.jsonl");
+    if !chat_file_path.exists() || !chat_file_path.is_file() {
+        return Ok(Vec::new());
     }
 
-    let session_paths = std::fs::read_dir(history_dir).map_err(|e| e.to_string())?;
-    for session_entry in session_paths.flatten() {
-        if session_entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false) {
-            let session_id = session_entry.file_name().to_string_lossy().into_owned();
-            let mut messages = Vec::new();
+    let file = File::open(&chat_file_path).map_err(|e| e.to_string())?;
+    let reader = BufReader::new(file);
 
-            if let Ok(msg_paths) = std::fs::read_dir(session_entry.path()) {
-                for msg_entry in msg_paths.flatten() {
-                    if msg_entry.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
-                        let filename = msg_entry.file_name().to_string_lossy().into_owned();
-                        if !filename.ends_with(".md") {
-                            continue;
-                        }
+    let mut sessions_map: HashMap<String, Vec<MessageNode>> = HashMap::new();
+    let filepath_str = chat_file_path.to_string_lossy().into_owned();
 
-                        // Parse filename: {time_prefix}_{role}_{safe_type}.md
-                        let stem = filename.strip_suffix(".md").unwrap();
-                        let parts: Vec<&str> = stem.split('_').collect();
-                        
-                        let (timestamp, role, msg_type) = if parts.len() >= 5 && parts[2].len() == 6 && parts[2].chars().all(|c| c.is_ascii_digit()) {
-                            let ts = format!("{}_{}_{}", parts[0], parts[1], parts[2]);
-                            let role = parts[3].to_string();
-                            let msg_type = parts[4..].join("_");
-                            (ts, role, msg_type)
-                        } else if parts.len() >= 4 {
-                            let ts = format!("{}_{}", parts[0], parts[1]);
-                            let role = parts[2].to_string();
-                            let msg_type = parts[3..].join("_");
-                            (ts, role, msg_type)
-                        } else {
-                            (stem.to_string(), "unknown".to_string(), "unknown".to_string())
-                        };
-
-                        let filepath = msg_entry.path().to_string_lossy().into_owned();
-
-                        messages.push(MessageNode {
-                            filename,
-                            filepath,
-                            role,
-                            msg_type,
-                            timestamp,
-                        });
-                    }
-                }
-            }
-
-            // Sort messages chronologically
-            messages.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
-
-            sessions.push(SessionNode {
-                id: session_id,
-                messages,
-            });
+    for line in reader.lines().flatten() {
+        if line.trim().is_empty() {
+            continue;
+        }
+        if let Ok(entry) = serde_json::from_str::<ChatEntry>(&line) {
+            let msg = MessageNode {
+                filename: "chat.jsonl".to_string(),
+                filepath: filepath_str.clone(),
+                role: entry.role,
+                msg_type: entry.msg_type,
+                timestamp: entry.timestamp,
+                content: entry.content,
+                model: entry.model,
+                last_transaction_cost: entry.last_transaction_cost,
+                session_cost: entry.session_cost,
+                cost: entry.cost,
+            };
+            sessions_map.entry(entry.session_id).or_default().push(msg);
         }
     }
+
+    let mut sessions: Vec<SessionNode> = sessions_map
+        .into_iter()
+        .map(|(id, mut messages)| {
+            // Sort messages chronologically
+            messages.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
+            SessionNode { id, messages }
+        })
+        .collect();
 
     // Sort sessions reverse chronologically by ID
     sessions.sort_by(|a, b| b.id.cmp(&a.id));

@@ -9,6 +9,11 @@ interface MessageNode {
   role: string;
   msg_type: string;
   timestamp: string;
+  content?: string;
+  model?: string;
+  last_transaction_cost?: number;
+  session_cost?: number;
+  cost?: number;
 }
 
 interface SessionNode {
@@ -41,29 +46,26 @@ export const RightSidebar = () => {
     }
   }
 
-  function formatTimestamp(ts: string) {
-    const match = ts.match(/(\d{8})_(\d{6})/);
+  function formatSessionDate(id: string) {
+    const match = id.match(/^(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})/);
     if (match) {
-      const date = match[1];
-      const time = match[2];
-      const year = parseInt(date.slice(0, 4), 10);
-      const month = parseInt(date.slice(4, 6), 10) - 1;
-      const day = parseInt(date.slice(6, 8), 10);
-      const hours = parseInt(time.slice(0, 2), 10);
-      const minutes = parseInt(time.slice(2, 4), 10);
-      const seconds = parseInt(time.slice(4, 6), 10);
-      const d = new Date(year, month, day, hours, minutes, seconds);
-      
-      const formatted = d.toLocaleString(undefined, {
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        second: '2-digit'
+      const [_, y, m, d, h, min, s] = match;
+      const date = new Date(parseInt(y), parseInt(m) - 1, parseInt(d), parseInt(h), parseInt(min), parseInt(s));
+      return date.toLocaleString(undefined, {
+        month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
       });
-      return ts.replace(match[0], formatted);
     }
-    return ts;
+    return id;
+  }
+
+  function formatMessageTime(ts: string) {
+    try {
+      const d = new Date(ts);
+      if (isNaN(d.getTime())) return ts; // Fallback if invalid
+      return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    } catch {
+      return ts;
+    }
   }
 
   if (!rightSidebarVisible) return null;
@@ -102,12 +104,38 @@ export const RightSidebar = () => {
         )}
 
         <div className="session-list">
-          {sessions.map((session, sIdx) => (
+          {sessions.map((session, sIdx) => {
+            const fileContext = new Set<string>();
+            const displayMessages: MessageNode[] = [];
+            
+            session.messages.forEach(msg => {
+              if (msg.role === "user_full_prompt") return;
+              
+              if (msg.content) {
+                const text = msg.content.trim();
+                if (text.startsWith("/add ")) {
+                  text.slice(5).split(/\s+/).forEach(f => { if (f) fileContext.add(f); });
+                  return;
+                } else if (text.startsWith("/drop ")) {
+                  text.slice(6).split(/\s+/).forEach(f => { if (f) fileContext.delete(f); });
+                  return;
+                } else if (text === "/clear") {
+                  fileContext.clear();
+                  return;
+                }
+              }
+              
+              displayMessages.push(msg);
+            });
+            
+            const fileContextArray = Array.from(fileContext);
+
+            return (
             <details key={session.id} className="session-item" open={sessions.length === 1 || sIdx === 0}>
               <summary className="session-summary">
                 <div className="session-info">
-                  <span className="session-date">{formatTimestamp(session.id)}</span>
-                  <span className="message-count">{session.messages.length} msgs</span>
+                  <span className="session-date">{formatSessionDate(session.id)}</span>
+                  <span className="message-count">{displayMessages.length + (fileContextArray.length > 0 ? 1 : 0)} msgs</span>
                 </div>
                 <div className="chevron">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -116,21 +144,51 @@ export const RightSidebar = () => {
                 </div>
               </summary>
               <div className="message-list">
-                {session.messages.map((msg, idx) => (
-                  <div key={idx} className={`message-item role-${msg.role.toLowerCase()}`} title={msg.filepath}>
+                {fileContextArray.length > 0 && (
+                  <div className="message-item role-system">
                     <div className="message-header">
-                      <span className="message-role">{msg.role}</span>
-                      <span className="message-time">{formatTimestamp(msg.timestamp)}</span>
+                      <span className="message-role">File Context</span>
                     </div>
-                    <div className="message-body">
-                      <span className="message-filename">{msg.filename}</span>
-                      <span className="message-type">{msg.msg_type}</span>
+                    <div className="message-content">
+                      {fileContextArray.join(", ")}
                     </div>
                   </div>
-                ))}
+                )}
+                {displayMessages.map((msg, idx) => {
+                  const msgCost = msg.last_transaction_cost ?? msg.cost;
+                  return (
+                    <div key={idx} className={`message-item role-${msg.role.toLowerCase()}`}>
+                      <div className="message-header">
+                        <span className="message-role">{msg.role}</span>
+                        <span className="message-time" title={msg.timestamp}>{formatMessageTime(msg.timestamp)}</span>
+                      </div>
+                      
+                      {msg.content && (
+                        <div className="message-content" title={msg.content}>
+                          {msg.content.trim()}
+                        </div>
+                      )}
+                      
+                      <div className="message-footer">
+                        <span className="message-type">{msg.msg_type}</span>
+                        {msg.model && (
+                          <span className="message-model" title={`Model: ${msg.model}`}>
+                            {msg.model.split('/').pop()}
+                          </span>
+                        )}
+                        {msgCost !== undefined && msgCost > 0 && (
+                          <span className="message-cost" title={`Cost: $${msgCost.toFixed(6)}`}>
+                            ${msgCost.toFixed(4)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </details>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

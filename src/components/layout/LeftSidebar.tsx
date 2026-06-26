@@ -448,7 +448,7 @@ export const Sidebar = () => {
                 <button className={`context-action-btn ${isCopied ? 'success' : ''}`} onClick={handleCopyFiles} title="Copy context to clipboard">
                   {isCopied ? <Check size={14} /> : <Copy size={14} />} {isCopied ? 'Copied!' : 'Copy Files'}
                 </button>
-                <button className="context-action-btn" onClick={() => { sendHiddenCommand(`/reset`); setChat([]); }} title="Clear all context files">
+                <button className="context-action-btn" onClick={() => { sendHiddenCommand(`/reset`); setChat([]); setQuery(''); searchFiles(''); }} title="Clear all context files">
                   <RefreshCcw size={14} /> Reset
                 </button>
               </div>
