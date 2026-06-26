@@ -16,7 +16,7 @@ export const Sidebar = () => {
   const { 
     isConnected, searchFiles, stats, sendHiddenCommand,
     sidebarVisible, fuzzyResults, workspace, activeFiles,
-    openFile
+    openFile, setChat
   } = useApp();
 
   const [sidebarWidth, setSidebarWidth] = useState(280);
@@ -170,6 +170,23 @@ export const Sidebar = () => {
     });
   };
 
+  const treeVisibleFiles = useMemo(() => {
+    if (!explorerTree) return [];
+    const files: string[] = [];
+    const traverse = (nodes: Record<string, TreeNode>) => {
+      const sortedNodes = Object.values(nodes).sort((a, b) => {
+        if (a.isFile === b.isFile) return a.name.localeCompare(b.name);
+        return a.isFile ? 1 : -1;
+      });
+      sortedNodes.forEach(node => {
+        if (node.isFile) files.push(node.path!);
+        else if (query.trim() !== '' || expandedFolders.has(node.folderPath!)) traverse(node.children);
+      });
+    };
+    traverse(explorerTree);
+    return files;
+  }, [explorerTree, expandedFolders, query]);
+
   const renderExplorerTree = (nodes: Record<string, TreeNode>, depth = 0) => {
     const sortedNodes = Object.values(nodes).sort((a, b) => {
       if (a.isFile === b.isFile) return a.name.localeCompare(b.name);
@@ -214,8 +231,11 @@ export const Sidebar = () => {
         );
       }
 
+      const fileIndex = treeVisibleFiles.indexOf(node.path!);
+      const isSelected = query.trim() !== '' && fileIndex === selectedIndex;
+
       return (
-        <div key={node.path} className={`tree-item file ${isAdded ? 'in-context' : ''}`} style={{ paddingLeft: `${depth * 12 + 34}px` }} onClick={() => openFile(node.path!)}>
+        <div key={node.path} className={`tree-item file ${isSelected ? 'selected' : ''} ${isAdded ? 'in-context' : ''}`} style={{ paddingLeft: `${depth * 12 + 34}px` }} onClick={() => openFile(node.path!)} onMouseEnter={() => { if (fileIndex >= 0) setSelectedIndex(fileIndex); }}>
           <div className="tree-item-left" title={node.path!}>
             <FileCode2 size={14} className="tree-item-icon file-icon" />
             <span className="tree-item-name">{node.name}</span>
@@ -347,10 +367,11 @@ export const Sidebar = () => {
                     onFocus={() => { if (fuzzyResults.length === 0) searchFiles(query); }}
                     onChange={(e) => { setQuery(e.target.value); searchFiles(e.target.value); }}
                     onKeyDown={(e) => {
-                      if (query.trim() === '' || workspaceViewMode !== 'flat') return;
-                      if (e.key === "ArrowDown") { e.preventDefault(); setSelectedIndex(p => Math.min(p + 1, fuzzyResults.length - 1)); }
+                      if (query.trim() === '') return;
+                      const list = workspaceViewMode === 'flat' ? fuzzyResults : treeVisibleFiles;
+                      if (e.key === "ArrowDown") { e.preventDefault(); setSelectedIndex(p => Math.min(p + 1, list.length - 1)); }
                       else if (e.key === "ArrowUp") { e.preventDefault(); setSelectedIndex(p => Math.max(p - 1, 0)); }
-                      else if (e.key === "Enter" && fuzzyResults[selectedIndex]) { e.preventDefault(); handleSelect(fuzzyResults[selectedIndex]); }
+                      else if (e.key === "Enter" && list[selectedIndex]) { e.preventDefault(); handleSelect(list[selectedIndex]); }
                     }}
                   />
                   {query && <X size={14} className="clear-icon" onClick={() => { setQuery(''); searchFiles(''); }} />}
@@ -427,7 +448,7 @@ export const Sidebar = () => {
                 <button className={`context-action-btn ${isCopied ? 'success' : ''}`} onClick={handleCopyFiles} title="Copy context to clipboard">
                   {isCopied ? <Check size={14} /> : <Copy size={14} />} {isCopied ? 'Copied!' : 'Copy Files'}
                 </button>
-                <button className="context-action-btn" onClick={() => sendHiddenCommand(`/reset`)} title="Clear all context files">
+                <button className="context-action-btn" onClick={() => { sendHiddenCommand(`/reset`); setChat([]); }} title="Clear all context files">
                   <RefreshCcw size={14} /> Reset
                 </button>
               </div>

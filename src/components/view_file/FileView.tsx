@@ -40,6 +40,23 @@ const EmptyIcon = () => (
   </svg>
 );
 
+const ZoomInIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{width: 14, height: 14}}>
+    <circle cx="11" cy="11" r="8"></circle>
+    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+    <line x1="11" y1="8" x2="11" y2="14"></line>
+    <line x1="8" y1="11" x2="14" y2="11"></line>
+  </svg>
+);
+
+const ZoomOutIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{width: 14, height: 14}}>
+    <circle cx="11" cy="11" r="8"></circle>
+    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+    <line x1="8" y1="11" x2="14" y2="11"></line>
+  </svg>
+);
+
 const SpinnerIcon = () => (
   <svg className="spinner" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <line x1="12" y1="2" x2="12" y2="6"></line>
@@ -91,13 +108,20 @@ async function getMemoizedHighlighter(lang: string) {
 }
 
 export const FileView = () => {
-  const { openedFile, workspace, activeFiles, sendHiddenCommand } = useApp();
+  const { openedFile, workspace, activeFiles, sendHiddenCommand, config, updateConfig } = useApp();
   const [tabs, setTabs] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<string | null>(null);
   const [content, setContent] = useState<string>('');
   const [htmlContent, setHtmlContent] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, tab: string } | null>(null);
+
+  useEffect(() => {
+    const handleClick = () => setContextMenu(null);
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, []);
 
   useEffect(() => {
     setTabs([]);
@@ -204,16 +228,40 @@ export const FileView = () => {
     sendHiddenCommand(inContext ? `/drop "${file}"` : `/add "${file}"`);
   };
 
-  const closeTab = (e: React.MouseEvent, tabToClose: string) => {
-    e.stopPropagation();
+  const closeTab = (tabToClose: string) => {
     setTabs(prev => {
       const newTabs = prev.filter(t => t !== tabToClose);
-      if (activeTab === tabToClose) {
-        setActiveTab(newTabs.length > 0 ? newTabs[newTabs.length - 1] : null);
-      }
+      setActiveTab(currentActive => {
+        if (currentActive === tabToClose) {
+          return newTabs.length > 0 ? newTabs[newTabs.length - 1] : null;
+        }
+        return currentActive;
+      });
       return newTabs;
     });
   };
+
+  const closeAllTabs = () => {
+    setTabs([]);
+    setActiveTab(null);
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'w') {
+        if (activeTab) {
+          e.preventDefault();
+          closeTab(activeTab);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeTab]);
+
+  const fontSize = parseInt(config?.file_view_font_size as any, 10) || 14;
+  const handleZoomIn = () => updateConfig("global", { file_view_font_size: fontSize + 1 });
+  const handleZoomOut = () => updateConfig("global", { file_view_font_size: Math.max(8, fontSize - 1) });
 
   if (tabs.length === 0) {
     return (
@@ -229,39 +277,72 @@ export const FileView = () => {
   return (
     <div className="file-view-container">
       <div className="file-view-header">
-        {tabs.map(tab => {
-          const isInContext = isTabInContext(tab);
-          return (
-            <div 
-              key={tab} 
-              className={`file-view-tab ${activeTab === tab ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab)}
-              onAuxClick={(e) => {
-                if (e.button === 1) closeTab(e, tab);
-              }}
-              title={tab}
-            >
-              <FileIcon />
-              <span className="tab-name">{tab.split(/[/\\]/).pop()}</span>
-              <div className="file-view-tab-actions">
-                <span 
-                  className={`file-view-tab-action ${isInContext ? 'in-context' : ''}`}
-                  onClick={(e) => toggleContext(e, tab)}
-                  title={isInContext ? "Remove from context" : "Add to context"}
-                >
-                  {isInContext ? <MinusIcon /> : <PlusIcon />}
-                </span>
-                <span 
-                  className="file-view-tab-close" 
-                  onClick={(e) => closeTab(e, tab)}
-                  title="Close"
-                >
-                  <CloseIcon />
-                </span>
+        <div className="file-view-tabs">
+          {tabs.map(tab => {
+            const isInContext = isTabInContext(tab);
+            return (
+              <div 
+                key={tab} 
+                className={`file-view-tab ${activeTab === tab ? 'active' : ''}`}
+                onClick={() => setActiveTab(tab)}
+                onAuxClick={(e) => {
+                  if (e.button === 1) {
+                    e.stopPropagation();
+                    closeTab(tab);
+                  }
+                }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setContextMenu({ x: e.clientX, y: e.clientY, tab });
+                }}
+                title={tab}
+              >
+                <FileIcon />
+                <span className="tab-name">{tab.split(/[/\\]/).pop()}</span>
+                <div className="file-view-tab-actions">
+                  <span 
+                    className={`file-view-tab-action ${isInContext ? 'in-context' : ''}`}
+                    onClick={(e) => toggleContext(e, tab)}
+                    title={isInContext ? "Remove from context" : "Add to context"}
+                  >
+                    {isInContext ? <MinusIcon /> : <PlusIcon />}
+                  </span>
+                  <span 
+                    className="file-view-tab-close" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      closeTab(tab);
+                    }}
+                    title="Close"
+                  >
+                    <CloseIcon />
+                  </span>
+                </div>
               </div>
+            );
+          })}
+        </div>
+        {contextMenu && (
+          <div 
+            className="file-view-context-menu" 
+            style={{ top: contextMenu.y, left: contextMenu.x }}
+          >
+            <div className="file-view-context-menu-item" onClick={() => closeTab(contextMenu.tab)}>
+              Close Tab
             </div>
-          );
-        })}
+            <div className="file-view-context-menu-item" onClick={closeAllTabs}>
+              Close All Tabs
+            </div>
+          </div>
+        )}
+        <div className="file-view-toolbar">
+          <button className="file-view-toolbar-btn" onClick={handleZoomOut} title="Zoom Out">
+            <ZoomOutIcon />
+          </button>
+          <button className="file-view-toolbar-btn" onClick={handleZoomIn} title="Zoom In">
+            <ZoomInIcon />
+          </button>
+        </div>
       </div>
       <div className="file-view-content">
         {loading ? (
@@ -277,6 +358,7 @@ export const FileView = () => {
         ) : (
           <div 
             className="shiki-container"
+            style={{ fontSize: `${fontSize}px` }}
             dangerouslySetInnerHTML={{ __html: htmlContent || `<pre><code>${content}</code></pre>` }}
           />
         )}

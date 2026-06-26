@@ -15,12 +15,43 @@
   display: flex;
   align-items: flex-end;
   flex-shrink: 0;
+}
+
+.file-view-tabs {
+  display: flex;
+  flex: 1;
   overflow-x: auto;
   scrollbar-width: none; /* Firefox */
 }
 
-.file-view-header::-webkit-scrollbar {
+.file-view-tabs::-webkit-scrollbar {
   display: none; /* WebKit */
+}
+
+.file-view-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  margin-bottom: 6px;
+}
+
+.file-view-toolbar-btn {
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  background: none;
+  border: none;
+  padding: 4px;
+  border-radius: 4px;
+}
+
+.file-view-toolbar-btn:hover {
+  color: var(--text-primary);
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .file-view-tab {
@@ -126,6 +157,34 @@
   color: var(--danger, #ef4444);
 }
 
+/* Context Menu */
+.file-view-context-menu {
+  position: fixed;
+  background-color: #1e1e20;
+  border: 1px solid var(--border-light, #333);
+  border-radius: 6px;
+  padding: 4px;
+  min-width: 150px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+}
+
+.file-view-context-menu-item {
+  padding: 6px 12px;
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.file-view-context-menu-item:hover {
+  background-color: var(--primary, #3b82f6);
+  color: #fff;
+}
+
 .file-view-tab-action svg,
 .file-view-tab-close svg {
   width: 12px;
@@ -205,7 +264,7 @@
 .shiki-container {
   min-height: 100%;
   font-family: var(--font-mono, 'JetBrains Mono', 'Fira Code', Consolas, monospace);
-  font-size: 14px;
+  /* font-size is applied via inline styles in React */
   line-height: 1.6;
   padding-bottom: 2rem;
 }

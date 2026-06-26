@@ -183,7 +183,10 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const clearAutocomplete = () => setAutocompleteResults([]);
 
   const getConfig = () => sendCommand(wsRef.current, { command: "get_config" });
-  const updateConfig = (scope: "local" | "global", updates: Record<string, any>) => sendCommand(wsRef.current, { command: "update_config", scope, updates });
+  const updateConfig = (scope: "local" | "global", updates: Record<string, any>) => {
+    setConfig(prev => ({ ...prev, ...updates }));
+    sendCommand(wsRef.current, { command: "update_config", scope, updates });
+  };
 
   const openFile = (file: string) => {
     setOpenedFile(file);
