@@ -122,14 +122,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       case "CoreContextUpdated": setActiveFiles(data.payload.active_files); break;
       case "ContextStatsUpdated": setStats(data.payload); break;
       case "CoreAgenticTaskProgress": setStatus(data.payload.message); break;
-      case "SystemMessage":
-        if (isRepomapReqRef.current) {
-          setRepomapContent(data.payload.message);
-          setIsGenerating(false); setStatus("Ready");
-        } else {
-          setIsGenerating(false); setStatus("Ready");
-        }
-        break;
+      case "SystemMessage": break;
       case "CoreLLMChunkReceived":
         if (isRepomapReqRef.current) {
           setRepomapContent((prev) => prev + (data.payload?.chunk || ""));
@@ -155,6 +148,8 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
             if (lastMsg && lastMsg.role === "assistant") newChat[newChat.length - 1] = { ...lastMsg, isComplete: true };
             return newChat;
           });
+        } else {
+          isRepomapReqRef.current = false;
         }
         setIsGenerating(false); setStatus("Ready");
         break;
@@ -172,7 +167,10 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   }
 
   // --- Actions ---
-  const sendHiddenCommand = (cmd: string) => sendCommand(wsRef.current, { command: "chat", input: cmd, mode: "ask" });
+  const sendHiddenCommand = (cmd: string) => {
+    isRepomapReqRef.current = false;
+    sendCommand(wsRef.current, { command: "chat", input: cmd, mode: "ask" });
+  };
   
   const initWorkspace = (path: string) => {
     setOpenedFile(null);

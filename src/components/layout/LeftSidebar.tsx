@@ -21,6 +21,7 @@ export const Sidebar = () => {
 
   const [sidebarWidth, setSidebarWidth] = useState(280);
   const [isResizing, setIsResizing] = useState(false);
+  const [workspaceViewMode, setWorkspaceViewMode] = useState<'flat' | 'tree'>('tree');
   const [viewMode, setViewMode] = useState<'flat' | 'tree'>('flat');
   const [verticalRatio, setVerticalRatio] = useState(0.5);
   const [isResizingVertical, setIsResizingVertical] = useState(false);
@@ -110,22 +111,41 @@ export const Sidebar = () => {
   };
 
   const explorerTree = useMemo(() => {
-    if (query.trim() !== '') return null; // Don't build tree if in search flat mode
+    if (workspaceViewMode === 'flat') return null;
     return buildTree(fuzzyResults);
-  }, [fuzzyResults, query]);
+  }, [fuzzyResults, workspaceViewMode]);
 
   const contextTree = useMemo(() => {
     if (viewMode === 'flat') return null;
     return buildTree(activeFiles);
   }, [activeFiles, viewMode]);
 
-  // Default expanding top-level explorer folders
+  // Default expanding top-level explorer folders, or auto-expand all during search
   useEffect(() => {
-    if (explorerTree && expandedFolders.size === 0) {
+    if (!explorerTree) return;
+    
+    if (query.trim() !== '') {
+      // Auto-expand all folders when searching
+      const allFolders = new Set<string>();
+      const extractFolders = (nodes: Record<string, TreeNode>) => {
+        Object.values(nodes).forEach(n => {
+          if (!n.isFile && n.folderPath) {
+            allFolders.add(n.folderPath);
+            extractFolders(n.children);
+          }
+        });
+      };
+      extractFolders(explorerTree);
+      setExpandedFolders(prev => {
+        const next = new Set(prev);
+        allFolders.forEach(f => next.add(f));
+        return next;
+      });
+    } else if (expandedFolders.size === 0) {
       const rootFolders = Object.values(explorerTree).filter(n => !n.isFile).map(n => n.folderPath!);
       setExpandedFolders(new Set(rootFolders));
     }
-  }, [explorerTree]);
+  }, [explorerTree, query]);
 
   const toggleFolder = (folderPath: string) => {
     setExpandedFolders(prev => {
@@ -214,7 +234,7 @@ export const Sidebar = () => {
       const folder = parts.join('/');
 
       return (
-        <div key={path} className={`tree-item file search-result ${i === selectedIndex ? 'selected' : ''} ${isAdded ? 'in-context' : ''}`} onClick={() => openFile(path)} onMouseEnter={() => setSelectedIndex(i)}>
+        <div key={path} className={`tree-item file search-result ${i === selectedIndex && query.trim() !== '' ? 'selected' : ''} ${isAdded ? 'in-context' : ''}`} onClick={() => openFile(path)} onMouseEnter={() => setSelectedIndex(i)}>
           <div className="tree-item-left" title={path}>
             <FileCode2 size={14} className="tree-item-icon file-icon" />
             <div className="search-result-text">
@@ -296,6 +316,17 @@ export const Sidebar = () => {
               {workspace ? workspace.split(/[/\\]/).filter(Boolean).pop() : "Workspace"}
             </span>
           </div>
+          {workspace && (
+            <div style={{ display: 'flex', gap: '4px' }}>
+              <button 
+                className="icon-btn-small" 
+                onClick={(e) => { e.stopPropagation(); setWorkspaceViewMode(v => v === 'flat' ? 'tree' : 'flat'); }} 
+                title={`Switch to ${workspaceViewMode === 'flat' ? 'tree' : 'flat'} view`}
+              >
+                {workspaceViewMode === 'flat' ? <ListTree size={16} /> : <List size={16} />}
+              </button>
+            </div>
+          )}
         </div>
         
         {!workspaceCollapsed && (
@@ -309,17 +340,17 @@ export const Sidebar = () => {
                     onFocus={() => { if (fuzzyResults.length === 0) searchFiles(query); }}
                     onChange={(e) => { setQuery(e.target.value); searchFiles(e.target.value); }}
                     onKeyDown={(e) => {
-                      if (query.trim() === '') return;
+                      if (query.trim() === '' || workspaceViewMode !== 'flat') return;
                       if (e.key === "ArrowDown") { e.preventDefault(); setSelectedIndex(p => Math.min(p + 1, fuzzyResults.length - 1)); }
                       else if (e.key === "ArrowUp") { e.preventDefault(); setSelectedIndex(p => Math.max(p - 1, 0)); }
-                      else if (e.key === "Enter" && fuzzyResults[selectedIndex]) { e.preventDefault(); openFile(fuzzyResults[selectedIndex]); }
+                      else if (e.key === "Enter" && fuzzyResults[selectedIndex]) { e.preventDefault(); handleSelect(fuzzyResults[selectedIndex]); }
                     }}
                   />
                   {query && <X size={14} className="clear-icon" onClick={() => { setQuery(''); searchFiles(''); }} />}
                 </div>
               </div>
               <div className="scrollable-list">
-                {query.trim() !== '' ? renderSearchResults() : (explorerTree ? renderExplorerTree(explorerTree) : null)}
+                {workspaceViewMode === 'flat' ? renderSearchResults() : (explorerTree ? renderExplorerTree(explorerTree) : null)}
               </div>
             </>
           ) : (
