@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useApp } from "../../context/AppContext";
+import { RefreshCcw, ChevronDown } from "lucide-react";
 import "./RightSidebar.css";
 
 interface MessageNode {
@@ -22,17 +23,55 @@ interface SessionNode {
 }
 
 export const RightSidebar = () => {
-  const { rightSidebarVisible, workspace } = useApp();
+  const { rightSidebarVisible, workspace, lastSessionUpdate } = useApp();
   const [sessions, setSessions] = useState<SessionNode[]>([]);
   const [error, setError] = useState("");
+  const [expandedMsgKey, setExpandedMsgKey] = useState<string | null>(null);
+  const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
+  const [width, setWidth] = useState(280);
+  const [isResizing, setIsResizing] = useState(false);
 
   useEffect(() => {
+    if (!isResizing) return;
+    const handleMouseMove = (e: MouseEvent) => {
+      const newWidth = window.innerWidth - e.clientX;
+      if (newWidth >= 200 && newWidth <= 800) {
+        setWidth(newWidth);
+      }
+    };
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isResizing]);
+
+  const handleMsgClick = (key: string) => {
+    const selection = window.getSelection();
+    if (selection && selection.toString().trim().length > 0) {
+      return; // Do not toggle if the user is selecting text
+    }
+    setExpandedMsgKey(prev => prev === key ? null : key);
+  };
+
+  useEffect(() => {
+
     if (rightSidebarVisible && workspace) {
       fetchHistory();
     } else {
       setSessions([]);
     }
-  }, [workspace, rightSidebarVisible]);
+  }, [workspace, rightSidebarVisible, lastSessionUpdate]);
 
   async function fetchHistory() {
     if (!workspace) return;
@@ -40,6 +79,10 @@ export const RightSidebar = () => {
       setError("");
       const result = await invoke<SessionNode[]>("list_workspace_files", { workspace });
       setSessions(result);
+      setExpandedSessionId(prev => {
+        if (prev && result.some(s => s.id === prev)) return prev;
+        return result.length > 0 ? result[0].id : null;
+      });
     } catch (err: any) {
       console.error("Failed to fetch LLM history:", err);
       setError(err.toString());
@@ -51,6 +94,21 @@ export const RightSidebar = () => {
     if (match) {
       const [_, y, m, d, h, min, s] = match;
       const date = new Date(parseInt(y), parseInt(m) - 1, parseInt(d), parseInt(h), parseInt(min), parseInt(s));
+      
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      
+      const sessionDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      const timeStr = date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+      
+      if (sessionDay.getTime() === today.getTime()) {
+        return `Today, ${timeStr}`;
+      } else if (sessionDay.getTime() === yesterday.getTime()) {
+        return `Yesterday, ${timeStr}`;
+      }
+      
       return date.toLocaleString(undefined, {
         month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
       });
@@ -68,29 +126,29 @@ export const RightSidebar = () => {
     }
   }
 
+  function formatCost(cost: number) {
+    if (cost < 0.01) return "<$0.01";
+    return `$${cost.toFixed(2)}`;
+  }
+
   if (!rightSidebarVisible) return null;
 
   return (
-    <div className="right-sidebar">
+    <div className="right-sidebar" style={{ width: `${width}px` }}>
+      <div className={`right-sidebar-resizer ${isResizing ? "is-resizing" : ""}`} onMouseDown={(e) => { e.preventDefault(); setIsResizing(true); }} />
       <div className="right-sidebar-header">
         <div className="header-title-row">
           <h2>Chat History</h2>
           {workspace && (
             <button 
-              className="refresh-button" 
+              className="refresh-button icon-btn-small" 
               onClick={fetchHistory}
               title="Refresh History"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="23 4 23 10 17 10"></polyline>
-                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-              </svg>
+              <RefreshCcw size={14} />
             </button>
           )}
         </div>
-        <p className="workspace-path" title={workspace || ""}>
-          {workspace ? workspace : "No workspace selected"}
-        </p>
       </div>
       
       <div className="right-sidebar-content">
@@ -109,8 +167,6 @@ export const RightSidebar = () => {
             const displayMessages: MessageNode[] = [];
             
             session.messages.forEach(msg => {
-              if (msg.role === "user_full_prompt") return;
-              
               if (msg.content) {
                 const text = msg.content.trim();
                 if (text.startsWith("/add ")) {
@@ -130,22 +186,43 @@ export const RightSidebar = () => {
             
             const fileContextArray = Array.from(fileContext);
 
+            const lastAssistantMsg = session.messages.slice().reverse().find(m => m.role.toLowerCase() === "assistant" && m.session_cost !== undefined);
+            const sessionCost = lastAssistantMsg?.session_cost;
+
             return (
-            <details key={session.id} className="session-item" open={sessions.length === 1 || sIdx === 0}>
-              <summary className="session-summary">
+            <details 
+              key={session.id} 
+              className="session-item" 
+              open={expandedSessionId === session.id}
+            >
+              <summary 
+                className="session-summary"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setExpandedSessionId(expandedSessionId === session.id ? null : session.id);
+                }}
+              >
                 <div className="session-info">
                   <span className="session-date">{formatSessionDate(session.id)}</span>
-                  <span className="message-count">{displayMessages.length + (fileContextArray.length > 0 ? 1 : 0)} msgs</span>
+                  <div className="session-badges">
+                    <span className="message-count">{displayMessages.length + (fileContextArray.length > 0 ? 1 : 0)} msgs</span>
+                    {sessionCost !== undefined && sessionCost > 0 && (
+                      <span className="session-cost" title={`Session Cost: $${sessionCost.toFixed(6)}`}>
+                        {formatCost(sessionCost)}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="chevron">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="6 9 12 15 18 9"></polyline>
-                  </svg>
+                  <ChevronDown size={14} />
                 </div>
               </summary>
               <div className="message-list">
                 {fileContextArray.length > 0 && (
-                  <div className="message-item role-system">
+                  <div 
+                    className={`message-item role-system ${expandedMsgKey === `${session.id}-fc` ? 'expanded' : ''}`}
+                    onClick={() => handleMsgClick(`${session.id}-fc`)}
+                  >
                     <div className="message-header">
                       <span className="message-role">File Context</span>
                     </div>
@@ -156,15 +233,28 @@ export const RightSidebar = () => {
                 )}
                 {displayMessages.map((msg, idx) => {
                   const msgCost = msg.last_transaction_cost ?? msg.cost;
+                  const msgKey = `${session.id}-${idx}`;
+                  const isExpanded = expandedMsgKey === msgKey;
                   return (
-                    <div key={idx} className={`message-item role-${msg.role.toLowerCase()}`}>
+                    <div 
+                      key={idx} 
+                      className={`message-item role-${msg.role.toLowerCase()} ${isExpanded ? 'expanded' : ''}`}
+                      onClick={() => handleMsgClick(msgKey)}
+                    >
                       <div className="message-header">
-                        <span className="message-role">{msg.role}</span>
+                        <span className="message-role">
+                          {msg.role}
+                          {msgCost !== undefined && msgCost > 0 && (
+                            <span className="header-cost" title={`Cost: $${msgCost.toFixed(6)}`}>
+                              {formatCost(msgCost)}
+                            </span>
+                          )}
+                        </span>
                         <span className="message-time" title={msg.timestamp}>{formatMessageTime(msg.timestamp)}</span>
                       </div>
                       
                       {msg.content && (
-                        <div className="message-content" title={msg.content}>
+                        <div className="message-content">
                           {msg.content.trim()}
                         </div>
                       )}
@@ -174,11 +264,6 @@ export const RightSidebar = () => {
                         {msg.model && (
                           <span className="message-model" title={`Model: ${msg.model}`}>
                             {msg.model.split('/').pop()}
-                          </span>
-                        )}
-                        {msgCost !== undefined && msgCost > 0 && (
-                          <span className="message-cost" title={`Cost: $${msgCost.toFixed(6)}`}>
-                            ${msgCost.toFixed(4)}
                           </span>
                         )}
                       </div>

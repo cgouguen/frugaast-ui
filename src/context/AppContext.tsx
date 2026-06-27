@@ -27,6 +27,7 @@ interface AppContextType {
   showFuzzySearch: boolean;
   setShowFuzzySearch: (show: boolean) => void;
   fuzzyResults: string[];
+  lastSessionUpdate: number;
   
   // Actions
   initWorkspace: (path: string) => void;
@@ -74,6 +75,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const [config, setConfig] = useState<Record<string, any>>({});
   const [showSettings, setShowSettings] = useState(false);
   const [openedFile, setOpenedFile] = useState<string | null>(null);
+  const [lastSessionUpdate, setLastSessionUpdate] = useState<number>(0);
 
   const wsRef = useRef<WebSocket | null>(null);
   const childRef = useRef<any>(null);
@@ -148,6 +150,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
             if (lastMsg && lastMsg.role === "assistant") newChat[newChat.length - 1] = { ...lastMsg, isComplete: true };
             return newChat;
           });
+          setLastSessionUpdate(Date.now());
         } else {
           isRepomapReqRef.current = false;
         }
@@ -226,7 +229,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       isConnected, status, workspace, setWorkspace, isGenerating, mainView, setMainView,
       chat, setChat, activeFiles, stats, approvalReq, maxMapTokens, setMaxMapTokens,
       repomapContent, isRepomapReq: isRepomapReqRef.current, sidebarVisible, setSidebarVisible, rightSidebarVisible, setRightSidebarVisible, showFuzzySearch, setShowFuzzySearch,
-      fuzzyResults, autocompleteResults, initWorkspace, sendHiddenCommand, sendMessage, fetchRepoMap, handleCancel,
+      fuzzyResults, lastSessionUpdate, autocompleteResults, initWorkspace, sendHiddenCommand, sendMessage, fetchRepoMap, handleCancel,
       handleApproval, searchFiles, fetchAutocomplete, clearAutocomplete, config, getConfig, updateConfig,
       showSettings, setShowSettings, openedFile, setOpenedFile, openFile
     }}>
