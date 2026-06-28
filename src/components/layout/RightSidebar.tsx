@@ -134,21 +134,21 @@ export const RightSidebar = () => {
   if (!rightSidebarVisible) return null;
 
   return (
-    <div className="right-sidebar" style={{ width: `${width}px` }}>
-      <div className={`right-sidebar-resizer ${isResizing ? "is-resizing" : ""}`} onMouseDown={(e) => { e.preventDefault(); setIsResizing(true); }} />
-      <div className="right-sidebar-header">
-        <div className="header-title-row">
-          <h2>Chat History</h2>
-          {workspace && (
-            <button 
-              className="refresh-button icon-btn-small" 
-              onClick={fetchHistory}
-              title="Refresh History"
-            >
-              <RefreshCcw size={14} />
-            </button>
-          )}
+    <div className="sidebar-panel right-sidebar" style={{ width: `${width}px` }}>
+      <div className={`sidebar-resizer sidebar-resizer-right ${isResizing ? "is-resizing" : ""}`} onMouseDown={(e) => { e.preventDefault(); setIsResizing(true); }} />
+      <div className="sidebar-section-header non-clickable right-sidebar-header">
+        <div className="sidebar-section-left">
+          <h2 className="sidebar-section-title">Chat History</h2>
         </div>
+        {workspace && (
+          <button 
+            className="refresh-button icon-btn-small" 
+            onClick={fetchHistory}
+            title="Refresh History"
+          >
+            <RefreshCcw size={14} />
+          </button>
+        )}
       </div>
       
       <div className="right-sidebar-content">
@@ -156,8 +156,8 @@ export const RightSidebar = () => {
 
         {sessions.length === 0 && !error && workspace && (
           <div className="empty-state">
-            <div className="empty-icon">📭</div>
-            <p>No chat history found</p>
+            <div style={{ fontSize: '32px', opacity: 0.5, marginBottom: '12px' }}>📭</div>
+            <p style={{ margin: 0 }}>No chat history found</p>
           </div>
         )}
 
@@ -204,14 +204,12 @@ export const RightSidebar = () => {
               >
                 <div className="session-info">
                   <span className="session-date">{formatSessionDate(session.id)}</span>
-                  <div className="session-badges">
-                    <span className="message-count">{displayMessages.length + (fileContextArray.length > 0 ? 1 : 0)} msgs</span>
-                    {sessionCost !== undefined && sessionCost > 0 && (
-                      <span className="session-cost" title={`Session Cost: $${sessionCost.toFixed(6)}`}>
-                        {formatCost(sessionCost)}
-                      </span>
-                    )}
-                  </div>
+                  <span className="message-count">{displayMessages.length + (fileContextArray.length > 0 ? 1 : 0)} msgs</span>
+                  {sessionCost !== undefined && sessionCost > 0 && (
+                    <span className="session-cost" title={`Session Cost: $${sessionCost.toFixed(6)}`}>
+                      {formatCost(sessionCost)}
+                    </span>
+                  )}
                 </div>
                 <div className="chevron">
                   <ChevronDown size={14} />
@@ -244,13 +242,15 @@ export const RightSidebar = () => {
                       <div className="message-header">
                         <span className="message-role">
                           {msg.role}
+                        </span>
+                        <div className="header-right">
                           {msgCost !== undefined && msgCost > 0 && (
                             <span className="header-cost" title={`Cost: $${msgCost.toFixed(6)}`}>
                               {formatCost(msgCost)}
                             </span>
                           )}
-                        </span>
-                        <span className="message-time" title={msg.timestamp}>{formatMessageTime(msg.timestamp)}</span>
+                          <span className="message-time" title={msg.timestamp}>{formatMessageTime(msg.timestamp)}</span>
+                        </div>
                       </div>
                       
                       {msg.content && (

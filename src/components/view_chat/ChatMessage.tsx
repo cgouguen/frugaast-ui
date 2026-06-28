@@ -10,7 +10,7 @@ export const ChatMessage = ({ msg }: { msg: any }) => {
       <div className="message-avatar">
         {msg.role === "assistant" ? <Bot size={18} /> : msg.role === "user" ? <User size={18} /> : <Settings2 size={18} />}
       </div>
-      <div className="message-content">
+      <div className="chat-message-content">
         {msg.role === "assistant" ? (
           <div className="markdown-prose">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>

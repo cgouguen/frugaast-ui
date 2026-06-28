@@ -332,14 +332,14 @@ export const Sidebar = () => {
   };
 
   return (
-    <aside className="sidebar" style={{ width: sidebarWidth, marginLeft: sidebarVisible ? 0 : -sidebarWidth, transition: isResizing ? 'none' : 'margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}>
+    <aside className="sidebar-panel sidebar" style={{ width: sidebarWidth, marginLeft: sidebarVisible ? 0 : -sidebarWidth, transition: isResizing ? 'none' : 'margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}>
 
       {/* WORKSPACE SECTION */}
       <div className={`sidebar-section workspace-section ${workspaceCollapsed ? 'collapsed' : ''}`} style={{ flex: workspaceCollapsed ? undefined : `${verticalRatio} 1 0px` }}>
-        <div className="section-header" onClick={() => setWorkspaceCollapsed(!workspaceCollapsed)}>
-          <div className="section-header-left">
+        <div className="sidebar-section-header" onClick={() => setWorkspaceCollapsed(!workspaceCollapsed)}>
+          <div className="sidebar-section-left">
             {workspaceCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
-            <span className="section-title truncate" title={workspace || "Workspace"}>
+            <span className="sidebar-section-title truncate" title={workspace || "Workspace"}>
               {workspace ? workspace.split(/[/\\]/).filter(Boolean).pop() : "Workspace"}
             </span>
           </div>
@@ -393,10 +393,10 @@ export const Sidebar = () => {
 
       {/* CONTEXT SECTION */}
       <div className={`sidebar-section context-section ${contextCollapsed ? 'collapsed' : ''}`} style={{ flex: contextCollapsed ? undefined : `${1 - verticalRatio} 1 0px` }}>
-        <div className="section-header" onClick={() => setContextCollapsed(!contextCollapsed)}>
-          <div className="section-header-left">
+        <div className="sidebar-section-header" onClick={() => setContextCollapsed(!contextCollapsed)}>
+          <div className="sidebar-section-left">
             {contextCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
-            <span className="section-title">Context ({activeFiles.length})</span>
+            <span className="sidebar-section-title">Context ({activeFiles.length})</span>
           </div>
           <div style={{ display: 'flex', gap: '4px' }}>
             <button 
@@ -473,7 +473,7 @@ export const Sidebar = () => {
         </div>
       </div>
 
-      <div className={`sidebar-resize-handle ${isResizing ? "is-resizing" : ""}`} onMouseDown={(e) => { e.preventDefault(); setIsResizing(true); }} />
+      <div className={`sidebar-resizer sidebar-resizer-left ${isResizing ? "is-resizing" : ""}`} onMouseDown={(e) => { e.preventDefault(); setIsResizing(true); }} />
     </aside>
   );
 };

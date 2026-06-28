@@ -9,8 +9,8 @@
 .message-row.assistant .message-avatar { background: var(--accent-glow); color: var(--accent-base); border-color: rgba(59, 130, 246, 0.3); }
 .message-row.system .message-avatar { background: rgba(234, 179, 8, 0.1); color: var(--system); border-color: rgba(234, 179, 8, 0.2); }
 
-.message-content { flex: 1; min-width: 0; color: var(--text-primary); font-size: var(--font-size-lg); }
-.message-row.system .message-content { color: var(--system); font-style: italic; }
+.chat-message-content { flex: 1; min-width: 0; color: var(--text-primary); font-size: var(--font-size-lg); }
+.message-row.system .chat-message-content { color: var(--system); font-style: italic; }
 
 .plain-text { white-space: pre-wrap; word-wrap: break-word; font-family: var(--font-ui); margin: 0; }
 
