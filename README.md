@@ -1,3 +1,4 @@
+hello
 # Init
 ```
 npm install
