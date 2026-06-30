@@ -9,7 +9,9 @@ export type ClientCommand =
   | { command: "autocomplete"; input: string } // ADDED: Autocomplete command
   | { command: "approval_response"; approval_id: string; approved: boolean }
   | { command: "get_config" }
-  | { command: "update_config"; scope: "local" | "global"; updates: Record<string, any> };
+  | { command: "update_config"; scope: "local" | "global"; updates: Record<string, any> }
+  | { command: "get_models" }
+  | { command: "load_model"; model_id: string; save_as_default?: boolean };
 
 // 2. EVENTS (Server -> Client)
 export type ServerEvent =
@@ -22,7 +24,8 @@ export type ServerEvent =
   | { type: "CoreUserFileApprovalRequested"; payload: { approval_id: string; files: string[] } }
   | { type: "FuzzySearchResults"; payload: { files: string[] } }
   | { type: "AutocompleteOptions"; payload: { options: string[]; input: string } }
-  | { type: "ConfigState"; payload: { config: Record<string, any> } };
+  | { type: "ConfigState"; payload: { config: Record<string, any> } }
+  | { type: "AvailableModels"; payload: { models: { name: string; id: string }[]; current_model?: string } };
 
 // 3. Helper to send typed commands
 export function sendCommand(ws: WebSocket | null, cmd: ClientCommand) {

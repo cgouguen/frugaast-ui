@@ -48,6 +48,9 @@ interface AppContextType {
   openedFile: string | null;
   setOpenedFile: (f: string | null) => void;
   openFile: (f: string) => void;
+  models: { name: string; id: string }[];
+  currentModel: string | null;
+  loadModel: (model_id: string) => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -76,6 +79,8 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const [showSettings, setShowSettings] = useState(false);
   const [openedFile, setOpenedFile] = useState<string | null>(null);
   const [lastSessionUpdate, setLastSessionUpdate] = useState<number>(0);
+  const [models, setModels] = useState<{ name: string; id: string }[]>([]);
+  const [currentModel, setCurrentModel] = useState<string | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
   const childRef = useRef<any>(null);
@@ -107,6 +112,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
         setIsConnected(true); 
           ("Ready"); 
         ws.send(JSON.stringify({ command: "get_config" }));
+        ws.send(JSON.stringify({ command: "get_models" }));
       };
       ws.onmessage = (event) => handleServerEvent(JSON.parse(event.data));
       ws.onclose = () => { setIsConnected(false); setStatus("Disconnected. Retrying..."); setTimeout(connectWebSocket, 3000); };
@@ -166,6 +172,12 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       case "ConfigState":
         setConfig(data.payload?.config || {});
         break;
+      case "AvailableModels":
+        setModels(data.payload.models || []);
+        if (data.payload.current_model) {
+          setCurrentModel(data.payload.current_model);
+        }
+        break;
     }
   }
 
@@ -189,6 +201,11 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const updateConfig = (scope: "local" | "global", updates: Record<string, any>) => {
     setConfig(prev => ({ ...prev, ...updates }));
     sendCommand(wsRef.current, { command: "update_config", scope, updates });
+  };
+
+  const loadModel = (model_id: string) => {
+    setCurrentModel(model_id);
+    sendCommand(wsRef.current, { command: "load_model", model_id, save_as_default: true });
   };
 
   const openFile = (file: string) => {
@@ -231,7 +248,8 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       repomapContent, isRepomapReq: isRepomapReqRef.current, sidebarVisible, setSidebarVisible, rightSidebarVisible, setRightSidebarVisible, showFuzzySearch, setShowFuzzySearch,
       fuzzyResults, lastSessionUpdate, autocompleteResults, initWorkspace, sendHiddenCommand, sendMessage, fetchRepoMap, handleCancel,
       handleApproval, searchFiles, fetchAutocomplete, clearAutocomplete, config, getConfig, updateConfig,
-      showSettings, setShowSettings, openedFile, setOpenedFile, openFile
+      showSettings, setShowSettings, openedFile, setOpenedFile, openFile,
+      models, currentModel, loadModel
     }}>
       {children}
     </AppContext.Provider>
