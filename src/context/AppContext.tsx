@@ -52,6 +52,8 @@ interface AppContextType {
   currentModel: string | null;
   loadModel: (model_id: string) => void;
   getBuildMessage: () => void;
+  buildMessage: string | null;
+  setBuildMessage: (msg: string | null) => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -82,10 +84,12 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const [lastSessionUpdate, setLastSessionUpdate] = useState<number>(0);
   const [models, setModels] = useState<{ name: string; id: string }[]>([]);
   const [currentModel, setCurrentModel] = useState<string | null>(null);
+  const [buildMessage, setBuildMessage] = useState<string | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
   const childRef = useRef<any>(null);
   const isRepomapReqRef = useRef(false);
+  const isBuildMsgReqRef = useRef(false);
 
   useEffect(() => {
     async function startBackendAndConnect() {
@@ -137,6 +141,10 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
           setRepomapContent(data.payload.text || "");
           isRepomapReqRef.current = false;
           setIsGenerating(false); setStatus("Ready");
+        } else if (isBuildMsgReqRef.current) {
+          setBuildMessage(data.payload.text || "No build message content found.");
+          isBuildMsgReqRef.current = false;
+          setStatus("Ready");
         }
         break;
       case "CoreLLMChunkReceived":
@@ -209,6 +217,8 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const getBuildMessage = () => {
+    isBuildMsgReqRef.current = true;
+    setStatus("Fetching build message...");
     sendCommand(wsRef.current, { command: "get_build_message" });
   };
 
@@ -253,7 +263,8 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       fuzzyResults, lastSessionUpdate, autocompleteResults, initWorkspace, sendHiddenCommand, sendMessage, fetchRepoMap, handleCancel,
       handleApproval, searchFiles, fetchAutocomplete, clearAutocomplete, config, getConfig, updateConfig,
       showSettings, setShowSettings, openedFile, setOpenedFile, openFile,
-      models, currentModel, loadModel, getBuildMessage
+      models, currentModel, loadModel, getBuildMessage,
+      buildMessage, setBuildMessage
     }}>
       {children}
     </AppContext.Provider>

@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useApp } from "../../context/AppContext";
-import { Send, Square, MessageSquare, Code, ChevronDown } from "lucide-react";
+import { Send, Square, MessageSquare, Code, ChevronDown, Hammer } from "lucide-react";
 import "./ChatInput.css";
+import { BuildMessageDrawer } from "../modals/BuildMessageDrawer";
 
 export const ChatInput = () => {
   const { 
     isConnected, isGenerating, isRepomapReq, approvalReq, 
     sendMessage, handleCancel, chat, 
     autocompleteResults, fetchAutocomplete, clearAutocomplete,
-    models, currentModel, loadModel
+    models, currentModel, loadModel, getBuildMessage
   } = useApp();
   
   const [input, setInput] = useState("");
@@ -172,7 +173,8 @@ export const ChatInput = () => {
   };
 
   return (
-    <div className="chat-input-wrapper">
+    <div className="chat-input-wrapper" style={{ position: "relative" }}>
+      <BuildMessageDrawer />
       <div className="input-box">
         {showAutocomplete && autocompleteResults.length > 0 && (
           <div className="autocomplete-popup">
@@ -194,6 +196,9 @@ export const ChatInput = () => {
           </button>
           <button className={`mode-btn ${mode === "code" ? "active" : ""}`} onClick={() => setMode("code")} disabled={isGenerating}>
             <Code size={14} /> Code
+          </button>
+          <button className="mode-btn" onClick={getBuildMessage} disabled={isGenerating} title="Show build message">
+            <Hammer size={14} /> Build
           </button>
           
           {models.length > 0 && (
