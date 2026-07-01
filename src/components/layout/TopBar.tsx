@@ -1,22 +1,10 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useApp } from "../../context/AppContext";
-import { MessageSquare, Map, Activity, Clipboard, FileText, ChevronDown } from "lucide-react";
+import { MessageSquare, Map, Activity, Clipboard, FileText } from "lucide-react";
 import "./TopBar.css";
 
 export const TopBar = () => {
-  const { mainView, setMainView, status, isGenerating, workspace, sendHiddenCommand, openedFile, models, currentModel, loadModel } = useApp();
-  const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsModelDropdownOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  const { mainView, setMainView, status, isGenerating, workspace, sendHiddenCommand, openedFile } = useApp();
 
   return (
     <header className="tabs-header">
@@ -48,37 +36,6 @@ export const TopBar = () => {
           <button className="action-btn" onClick={() => sendHiddenCommand(`/copy-repomap`)} title="Copy Repo Map" disabled={!workspace}>
             <Clipboard size={14} /> <span>Copy Map</span>
           </button>
-        )}
-        {models.length > 0 && (
-          <div className="custom-select-wrapper" style={{ marginLeft: "var(--space-sm)" }} ref={dropdownRef}>
-            <button 
-              className={`custom-select-trigger ${isModelDropdownOpen ? 'open' : ''}`}
-              onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
-              title="Select Model"
-            >
-              <span className="custom-select-text">
-                {models.find(m => m.id === currentModel)?.name || "Select Model"}
-              </span>
-              <ChevronDown size={14} className="custom-select-icon" />
-            </button>
-            
-            {isModelDropdownOpen && (
-              <div className="custom-dropdown-menu">
-                {models.map(m => (
-                  <button
-                    key={m.id}
-                    className={`custom-dropdown-item ${currentModel === m.id ? 'selected' : ''}`}
-                    onClick={() => {
-                      loadModel(m.id);
-                      setIsModelDropdownOpen(false);
-                    }}
-                  >
-                    {m.name}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
         )}
       </div>
     </header>

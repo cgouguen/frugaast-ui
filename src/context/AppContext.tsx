@@ -51,6 +51,7 @@ interface AppContextType {
   models: { name: string; id: string }[];
   currentModel: string | null;
   loadModel: (model_id: string) => void;
+  getBuildMessage: () => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -131,35 +132,34 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       case "ContextStatsUpdated": setStats(data.payload); break;
       case "CoreAgenticTaskProgress": setStatus(data.payload.message); break;
       case "SystemMessage": break;
-      case "CoreLLMChunkReceived":
+      case "ContentResponse":
         if (isRepomapReqRef.current) {
-          setRepomapContent((prev) => prev + (data.payload?.chunk || ""));
-        } else {
-          setChat((prev) => {
-            const newChat = [...prev];
-            const lastMsg = newChat[newChat.length - 1];
-            const chunk = data.payload?.chunk || "";
-            if (lastMsg && lastMsg.role === "assistant" && !lastMsg.isComplete) {
-              newChat[newChat.length - 1] = { ...lastMsg, content: lastMsg.content + chunk };
-            } else {
-              newChat.push({ role: "assistant", content: chunk, isComplete: false });
-            }
-            return newChat;
-          });
+          setRepomapContent(data.payload.text || "");
+          isRepomapReqRef.current = false;
+          setIsGenerating(false); setStatus("Ready");
         }
         break;
+      case "CoreLLMChunkReceived":
+        setChat((prev) => {
+          const newChat = [...prev];
+          const lastMsg = newChat[newChat.length - 1];
+          const chunk = data.payload?.chunk || "";
+          if (lastMsg && lastMsg.role === "assistant" && !lastMsg.isComplete) {
+            newChat[newChat.length - 1] = { ...lastMsg, content: lastMsg.content + chunk };
+          } else {
+            newChat.push({ role: "assistant", content: chunk, isComplete: false });
+          }
+          return newChat;
+        });
+        break;
       case "CoreLLMResponseComplete":
-        if (!isRepomapReqRef.current) {
-          setChat((prev) => {
-            const newChat = [...prev];
-            const lastMsg = newChat[newChat.length - 1];
-            if (lastMsg && lastMsg.role === "assistant") newChat[newChat.length - 1] = { ...lastMsg, isComplete: true };
-            return newChat;
-          });
-          setLastSessionUpdate(Date.now());
-        } else {
-          isRepomapReqRef.current = false;
-        }
+        setChat((prev) => {
+          const newChat = [...prev];
+          const lastMsg = newChat[newChat.length - 1];
+          if (lastMsg && lastMsg.role === "assistant") newChat[newChat.length - 1] = { ...lastMsg, isComplete: true };
+          return newChat;
+        });
+        setLastSessionUpdate(Date.now());
         setIsGenerating(false); setStatus("Ready");
         break;
       case "CoreUserFileApprovalRequested": setApprovalReq(data.payload); break;
@@ -208,6 +208,10 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     sendCommand(wsRef.current, { command: "load_model", model_id, save_as_default: true });
   };
 
+  const getBuildMessage = () => {
+    sendCommand(wsRef.current, { command: "get_build_message" });
+  };
+
   const openFile = (file: string) => {
     setOpenedFile(file);
     setMainView("file");
@@ -217,7 +221,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     if (isGenerating && !isRepomapReqRef.current) return;
     isRepomapReqRef.current = true;
     setRepomapContent("");
-    sendCommand(wsRef.current, { command: "chat", input: prompt, mode: "repomap", max_map_token: maxMapTokens });
+    sendCommand(wsRef.current, { command: "get_repo_map", user_input: prompt, max_map_tokens: maxMapTokens });
     setIsGenerating(true); setStatus("Generating RepoMap...");
   };
 
@@ -249,7 +253,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       fuzzyResults, lastSessionUpdate, autocompleteResults, initWorkspace, sendHiddenCommand, sendMessage, fetchRepoMap, handleCancel,
       handleApproval, searchFiles, fetchAutocomplete, clearAutocomplete, config, getConfig, updateConfig,
       showSettings, setShowSettings, openedFile, setOpenedFile, openFile,
-      models, currentModel, loadModel
+      models, currentModel, loadModel, getBuildMessage
     }}>
       {children}
     </AppContext.Provider>

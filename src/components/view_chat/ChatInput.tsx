@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useApp } from "../../context/AppContext";
-import { Send, Square, MessageSquare, Code } from "lucide-react";
+import { Send, Square, MessageSquare, Code, ChevronDown } from "lucide-react";
 import "./ChatInput.css";
 
 export const ChatInput = () => {
   const { 
     isConnected, isGenerating, isRepomapReq, approvalReq, 
     sendMessage, handleCancel, chat, 
-    autocompleteResults, fetchAutocomplete, clearAutocomplete 
+    autocompleteResults, fetchAutocomplete, clearAutocomplete,
+    models, currentModel, loadModel
   } = useApp();
   
   const [input, setInput] = useState("");
@@ -17,6 +18,18 @@ export const ChatInput = () => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const lastAutocompletePrefix = useRef<string | null>(null);
+  const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsModelDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -182,6 +195,38 @@ export const ChatInput = () => {
           <button className={`mode-btn ${mode === "code" ? "active" : ""}`} onClick={() => setMode("code")} disabled={isGenerating}>
             <Code size={14} /> Code
           </button>
+          
+          {models.length > 0 && (
+            <div className="custom-select-wrapper chat-model-dropdown" style={{ marginLeft: "auto" }} ref={dropdownRef}>
+              <button 
+                className={`custom-select-trigger ${isModelDropdownOpen ? 'open' : ''}`}
+                onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
+                title="Select Model"
+              >
+                <span className="custom-select-text">
+                  {models.find(m => m.id === currentModel)?.name || "Select Model"}
+                </span>
+                <ChevronDown size={14} className="custom-select-icon" />
+              </button>
+              
+              {isModelDropdownOpen && (
+                <div className="custom-dropdown-menu chat-dropdown-menu">
+                  {models.map(m => (
+                    <button
+                      key={m.id}
+                      className={`custom-dropdown-item ${currentModel === m.id ? 'selected' : ''}`}
+                      onClick={() => {
+                        loadModel(m.id);
+                        setIsModelDropdownOpen(false);
+                      }}
+                    >
+                      {m.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="input-wrapper">

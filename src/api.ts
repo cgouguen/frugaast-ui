@@ -3,7 +3,10 @@
 // 1. COMMANDS (Client -> Server)
 export type ClientCommand = 
   | { command: "init_workspace"; path?: string } // Made path optional to match Python
-  | { command: "chat"; input: string; mode: "ask" | "code" | "repomap"; max_map_token?: number } // Fixed: token -> token (singular)
+  | { command: "chat"; input: string; mode: "ask" | "code" }
+  | { command: "get_repo_map"; user_input: string; max_map_tokens: number }
+  | { command: "get_context" }
+  | { command: "get_build_message" }
   | { command: "cancel" }
   | { command: "fuzzy_search_files"; query: string }
   | { command: "autocomplete"; input: string } // ADDED: Autocomplete command
@@ -21,6 +24,7 @@ export type ServerEvent =
   | { type: "SystemMessage"; payload: { message: string } }
   | { type: "CoreLLMChunkReceived"; payload: { chunk?: string } }
   | { type: "CoreLLMResponseComplete"; payload: {} }
+  | { type: "ContentResponse"; payload: { text: string } }
   | { type: "CoreUserFileApprovalRequested"; payload: { approval_id: string; files: string[] } }
   | { type: "FuzzySearchResults"; payload: { files: string[] } }
   | { type: "AutocompleteOptions"; payload: { options: string[]; input: string } }
