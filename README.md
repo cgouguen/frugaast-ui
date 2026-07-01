@@ -1,5 +1,4 @@
 hello
-world
 # Init
 ```
 npm install
