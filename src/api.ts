@@ -8,7 +8,6 @@ export type ClientCommand =
   | { command: "get_context" }
   | { command: "get_build_message"; user_input: string }
   | { command: "cancel" }
-  | { command: "fuzzy_search_files"; query: string }
   | { command: "autocomplete"; input: string } // ADDED: Autocomplete command
   | { command: "approval_response"; approval_id: string; approved: boolean }
   | { command: "get_config" }
@@ -26,7 +25,6 @@ export type ServerEvent =
   | { type: "CoreLLMResponseComplete"; payload: {} }
   | { type: "ContentResponse"; payload: { text: string } }
   | { type: "CoreUserFileApprovalRequested"; payload: { approval_id: string; files: string[] } }
-  | { type: "FuzzySearchResults"; payload: { files: string[] } }
   | { type: "AutocompleteOptions"; payload: { options: string[]; input: string } }
   | { type: "ConfigState"; payload: { config: Record<string, any> } }
   | { type: "AvailableModels"; payload: { models: { name: string; id: string }[]; current_model?: string } };

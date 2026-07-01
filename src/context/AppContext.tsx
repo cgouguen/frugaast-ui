@@ -1,6 +1,7 @@
 // src/context/AppContext.tsx
 import React, { createContext, useContext, useState, useEffect, useRef } from "react";
 import { Command } from "@tauri-apps/plugin-shell";
+import { invoke } from "@tauri-apps/api/core";
 import { sendCommand, ServerEvent } from "../api";
 
 interface AppContextType {
@@ -183,9 +184,6 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
         setIsGenerating(false); setStatus("Ready");
         break;
       case "CoreUserFileApprovalRequested": setApprovalReq(data.payload); break;
-      case "FuzzySearchResults":
-        setFuzzyResults(data.payload.files || []);
-        break;
       case "AutocompleteOptions":
         setAutocompleteResults(data.payload.options || []);
         break;
@@ -212,7 +210,15 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     sendCommand(wsRef.current, { command: "init_workspace", path });
   };
   
-  const searchFiles = (query: string) => sendCommand(wsRef.current, { command: "fuzzy_search_files", query });
+  const searchFiles = async (query: string) => {
+    if (!workspace) return;
+    try {
+      const files = await invoke<string[]>("fuzzy_search", { workspace, query });
+      setFuzzyResults(files);
+    } catch (err) {
+      console.error("Fuzzy search error:", err);
+    }
+  };
 
   const fetchAutocomplete = (input: string) => sendCommand(wsRef.current, { command: "autocomplete", input });
   const clearAutocomplete = () => setAutocompleteResults([]);
