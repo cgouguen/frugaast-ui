@@ -31,9 +31,14 @@ const MessageItem = ({ role, content, foldSignal }: { role: string; content: any
   return (
     <div className={`msg-block msg-${role} ${!isExpanded ? 'collapsed' : ''}`}>
       <div className="msg-header" onClick={() => setIsExpanded(!isExpanded)}>
-        <ToggleIcon size={16} className="msg-toggle-icon" />
-        <RoleIcon size={16} />
-        <span className="msg-role-name">{role}</span>
+        <div className="msg-header-title">
+          <ToggleIcon size={16} className="msg-toggle-icon" />
+          <RoleIcon size={16} />
+          <span className="msg-role-name">{role}</span>
+        </div>
+        {!isExpanded && text && (
+          <span className="msg-preview">{text.trim().split('\n')[0]}</span>
+        )}
       </div>
       {isExpanded && (
         <div className="msg-body">
@@ -70,6 +75,7 @@ const MessageItem = ({ role, content, foldSignal }: { role: string; content: any
 export const BuildMessageDrawer = () => {
   const { buildMessage, setBuildMessage } = useApp();
   const [foldSignal, setFoldSignal] = useState(0);
+  const [isClosing, setIsClosing] = useState(false);
 
   const parsedMessages = useMemo(() => {
     if (!buildMessage) return null;
@@ -81,7 +87,24 @@ export const BuildMessageDrawer = () => {
     }
   }, [buildMessage]);
 
+  useEffect(() => {
+    if (buildMessage) {
+      setIsClosing(false);
+    }
+  }, [buildMessage]);
+
   if (buildMessage === null) return null;
+
+  const handleClose = () => {
+    setIsClosing(true);
+  };
+
+  const handleAnimationEnd = (e: React.AnimationEvent) => {
+    if (isClosing && e.target === e.currentTarget) {
+      setBuildMessage(null);
+      setIsClosing(false);
+    }
+  };
 
   const handleCopy = () => {
     if (buildMessage) {
@@ -94,8 +117,12 @@ export const BuildMessageDrawer = () => {
   };
 
   return (
-    <div className="build-message-overlay" onClick={() => setBuildMessage(null)}>
-      <div className="build-message-drawer" onClick={(e) => e.stopPropagation()}>
+    <div 
+      className={`build-message-overlay ${isClosing ? 'closing' : ''}`} 
+      onClick={handleClose}
+      onAnimationEnd={handleAnimationEnd}
+    >
+      <div className={`build-message-drawer ${isClosing ? 'closing' : ''}`} onClick={(e) => e.stopPropagation()}>
         <div className="drawer-header">
           <div className="drawer-title">
             <div className="title-icon-wrapper">
@@ -117,7 +144,7 @@ export const BuildMessageDrawer = () => {
               <Copy size={14} />
               <span>Copy</span>
             </button>
-            <button className="close-btn" onClick={() => setBuildMessage(null)} title="Close">
+            <button className="close-btn" onClick={handleClose} title="Close">
               <X size={18} />
             </button>
           </div>

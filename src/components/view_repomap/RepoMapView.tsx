@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useApp } from "../../context/AppContext";
-import { Map, RefreshCcw, Sparkles } from "lucide-react";
+import { Map, RefreshCcw, Sparkles, Copy, Check } from "lucide-react";
 import "./RepoMapView.css";
 
 export const RepoMapView = () => {
   const { isConnected, isGenerating, isRepomapReq, maxMapTokens, setMaxMapTokens, fetchRepoMap, repomapContent } = useApp();
   const [prompt, setPrompt] = useState("");
+  const [isCopied, setIsCopied] = useState(false);
   const debounceRef = useRef<number | null>(null);
   const fetchRef = useRef(fetchRepoMap);
   const promptRef = useRef(prompt);
@@ -17,6 +18,14 @@ export const RepoMapView = () => {
   useEffect(() => {
     promptRef.current = prompt;
   }, [prompt]);
+
+  const handleCopy = () => {
+    if (repomapContent) {
+      navigator.clipboard.writeText(repomapContent);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    }
+  };
 
   useEffect(() => {
     const triggerFetch = () => {
@@ -43,7 +52,7 @@ export const RepoMapView = () => {
             <Map size={24} className="brand-icon" /> 
             <div>
               <h2>Repository Map</h2>
-              <span className="repomap-subtitle">AI-generated architectural overview of your workspace</span>
+              <span className="repomap-subtitle">Architectural overview of your workspace</span>
             </div>
           </div>
           <div className="repomap-controls-right">
@@ -78,7 +87,17 @@ export const RepoMapView = () => {
 
       <div className="repomap-content-card">
         {repomapContent ? (
-          <pre className="repomap-code">{repomapContent}</pre>
+          <>
+            <button 
+              className="repomap-copy-btn" 
+              onClick={handleCopy}
+              title="Copy to clipboard"
+            >
+              {isCopied ? <Check size={16} /> : <Copy size={16} />}
+              <span>{isCopied ? "Copied!" : "Copy"}</span>
+            </button>
+            <pre className="repomap-code">{repomapContent}</pre>
+          </>
         ) : (
           <div className="repomap-empty-state">
             <div className="pulse-ring"></div>

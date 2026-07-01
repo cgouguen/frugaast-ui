@@ -32,11 +32,6 @@ export const TopBar = () => {
             <Clipboard size={14} /> <span>Copy Data</span>
           </button>
         )}
-        {mainView === 'repomap' && (
-          <button className="action-btn" onClick={() => sendHiddenCommand(`/copy-repomap`)} title="Copy Repo Map" disabled={!workspace}>
-            <Clipboard size={14} /> <span>Copy Map</span>
-          </button>
-        )}
       </div>
     </header>
   );

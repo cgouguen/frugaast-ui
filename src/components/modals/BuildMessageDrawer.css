@@ -14,6 +14,10 @@
   animation: fadeIn 0.2s ease-out;
 }
 
+.build-message-overlay.closing {
+  animation: fadeOut 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 .build-message-drawer {
   position: relative;
   width: 50vw;
@@ -30,7 +34,11 @@
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   display: flex;
   flex-direction: column;
-  animation: popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.build-message-drawer.closing {
+  animation: slideOut 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 @keyframes fadeIn {
@@ -38,9 +46,19 @@
   to { opacity: 1; }
 }
 
-@keyframes popIn {
-  from { transform: scale(0.95) translateY(15px); opacity: 0; }
-  to { transform: scale(1) translateY(0); opacity: 1; }
+@keyframes slideIn {
+  from { transform: translateY(100vh); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes slideOut {
+  from { transform: translateY(0); opacity: 1; }
+  to { transform: translateY(100vh); opacity: 0; }
 }
 
 .build-message-drawer .drawer-header {
@@ -189,18 +207,38 @@
 .msg-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 16px;
   padding: 10px 24px;
   background: var(--bg-surface, #2a2a2a);
   border-bottom: 1px solid var(--border-light, #333);
   font-size: var(--font-size-sm, 12px);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  font-weight: 600;
   color: var(--text-secondary, #aaa);
   cursor: pointer;
   user-select: none;
   transition: background 0.2s ease;
+  overflow: hidden;
+}
+
+.msg-header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.msg-preview {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-muted, #888);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  opacity: 0.8;
 }
 
 .msg-header:hover {
@@ -215,9 +253,9 @@
   opacity: 0.7;
 }
 
-.msg-system .msg-header { color: #a855f7; }
-.msg-user .msg-header { color: #3b82f6; }
-.msg-assistant .msg-header { color: #10b981; }
+.msg-system .msg-header-title { color: #a855f7; }
+.msg-user .msg-header-title { color: #3b82f6; }
+.msg-assistant .msg-header-title { color: #10b981; }
 
 .msg-body {
   padding: 16px 24px;
