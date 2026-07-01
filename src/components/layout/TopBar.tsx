@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useApp } from "../../context/AppContext";
-import { MessageSquare, Map, Activity, Clipboard, FileText } from "lucide-react";
+import { MessageSquare, Map, FileText } from "lucide-react";
 import "./TopBar.css";
 
 export const TopBar = () => {
-  const { mainView, setMainView, status, isGenerating, workspace, sendHiddenCommand, openedFile } = useApp();
+  const { mainView, setMainView, openedFile } = useApp();
 
   return (
     <header className="tabs-header">
@@ -13,7 +13,7 @@ export const TopBar = () => {
           <MessageSquare size={16} /> <span>Chat</span>
         </button>
         <button className={`tab-btn ${mainView === 'repomap' ? 'active' : ''}`} onClick={() => setMainView('repomap')}>
-          <Map size={16} /> <span>Repo Map</span>
+          <Map size={16} /> <span>Prompt Builder</span>
         </button>
         {(openedFile || mainView === 'file') && (
           <button className={`tab-btn ${mainView === 'file' ? 'active' : ''}`} onClick={() => setMainView('file')}>
@@ -21,18 +21,6 @@ export const TopBar = () => {
           </button>
         )}
       </nav>
-      
-      <div className="header-actions">
-        <div className="status-indicator">
-          <Activity size={14} className={isGenerating ? "spin-pulse" : "static"} />
-          <span className="status-text">{status}</span>
-        </div>
-        {mainView === 'chat' && (
-          <button className="action-btn" onClick={() => sendHiddenCommand(`/copy-build-message`)} title="Copy Build Messages">
-            <Clipboard size={14} /> <span>Copy Data</span>
-          </button>
-        )}
-      </div>
     </header>
   );
 };

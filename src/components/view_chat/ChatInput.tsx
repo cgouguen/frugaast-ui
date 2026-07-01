@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useApp } from "../../context/AppContext";
-import { Send, Square, MessageSquare, Code, ChevronDown, Hammer } from "lucide-react";
+import { Send, Square, MessageSquare, Code, ChevronDown, Hammer, Activity, X } from "lucide-react";
 import "./ChatInput.css";
 import { BuildMessageDrawer } from "../modals/BuildMessageDrawer";
 
@@ -9,7 +9,8 @@ export const ChatInput = () => {
     isConnected, isGenerating, isRepomapReq, approvalReq, 
     sendMessage, handleCancel, chat, 
     autocompleteResults, fetchAutocomplete, clearAutocomplete,
-    models, currentModel, loadModel, getBuildMessage
+    models, currentModel, loadModel, getBuildMessage,
+    status
   } = useApp();
   
   const [input, setInput] = useState("");
@@ -20,7 +21,14 @@ export const ChatInput = () => {
   const overlayRef = useRef<HTMLDivElement>(null);
   const lastAutocompletePrefix = useRef<string | null>(null);
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
+  const [isStatusHidden, setIsStatusHidden] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isGenerating) {
+      setIsStatusHidden(false);
+    }
+  }, [isGenerating]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -261,16 +269,29 @@ export const ChatInput = () => {
           </div>
         </div>
 
-        <div className="input-actions">
-          {isGenerating && !isRepomapReq ? (
-            <button type="button" className="send-btn stop" onClick={handleCancel} title="Stop Generation">
-              <Square size={14} fill="currentColor" />
-            </button>
+        <div className="input-footer">
+          {!isStatusHidden ? (
+            <div className={`status-indicator ${isGenerating ? "generating" : "idle"}`}>
+              <Activity size={14} className={isGenerating ? "spin-pulse" : "static"} />
+              <span className="status-text">{status}</span>
+              <button className="status-hide-btn" onClick={() => setIsStatusHidden(true)} title="Hide status">
+                <X size={12} />
+              </button>
+            </div>
           ) : (
-            <button type="button" className="send-btn" onClick={onSend} disabled={!isConnected || !input.trim()} title="Send">
-              <Send size={14} />
-            </button>
+            <div />
           )}
+          <div className="input-actions">
+            {isGenerating && !isRepomapReq ? (
+              <button type="button" className="send-btn stop" onClick={handleCancel} title="Stop Generation">
+                <Square size={14} fill="currentColor" />
+              </button>
+            ) : (
+              <button type="button" className="send-btn" onClick={onSend} disabled={!isConnected || !input.trim()} title="Send">
+                <Send size={14} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

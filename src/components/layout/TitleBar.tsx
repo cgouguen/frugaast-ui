@@ -1,14 +1,14 @@
 import React, { useState, useRef, useEffect } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Minus, Square, X, PanelLeftClose, PanelLeftOpen, FolderOpen, ChevronRight, Settings, ChevronDown } from "lucide-react";
+import { Minus, Square, X, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, FolderOpen, ChevronRight, Settings, ChevronDown } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import "./TitleBar.css";
 
 const appWindow = getCurrentWindow();
 
 export const TitleBar = () => {
-  const { sidebarVisible, setSidebarVisible, isConnected, isGenerating, workspace, setWorkspace, initWorkspace, setShowSettings, config, updateConfig } = useApp();
+  const { sidebarVisible, setSidebarVisible, rightSidebarVisible, setRightSidebarVisible, isConnected, isGenerating, workspace, setWorkspace, initWorkspace, setShowSettings, config, updateConfig } = useApp();
   const [isWorkspaceMenuOpen, setIsWorkspaceMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -111,6 +111,9 @@ export const TitleBar = () => {
       >
         <div className="titlebar-button" onClick={() => setShowSettings(true)} title="Settings">
           <Settings size={14} />
+        </div>
+        <div className="titlebar-button" onClick={() => setRightSidebarVisible(!rightSidebarVisible)} title="Toggle Right Sidebar">
+          {rightSidebarVisible ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
         </div>
         <div className="titlebar-button" onClick={() => appWindow.minimize()}>
           <Minus size={16} />

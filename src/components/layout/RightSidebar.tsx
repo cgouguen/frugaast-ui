@@ -131,10 +131,15 @@ export const RightSidebar = () => {
     return `$${cost.toFixed(2)}`;
   }
 
-  if (!rightSidebarVisible) return null;
-
   return (
-    <div className="sidebar-panel right-sidebar" style={{ width: `${width}px` }}>
+    <div 
+      className="sidebar-panel right-sidebar" 
+      style={{ 
+        width: `${width}px`,
+        marginRight: rightSidebarVisible ? 0 : -width,
+        transition: isResizing ? 'none' : 'margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+      }}
+    >
       <div className={`sidebar-resizer sidebar-resizer-right ${isResizing ? "is-resizing" : ""}`} onMouseDown={(e) => { e.preventDefault(); setIsResizing(true); }} />
       <div className="sidebar-section-header non-clickable right-sidebar-header">
         <div className="sidebar-section-left">
