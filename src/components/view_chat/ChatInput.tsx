@@ -191,47 +191,52 @@ export const ChatInput = () => {
           </div>
         )}
         <div className="mode-toggle">
-          <button className={`mode-btn ${mode === "ask" ? "active" : ""}`} onClick={() => setMode("ask")} disabled={isGenerating}>
-            <MessageSquare size={14} /> Ask
-          </button>
-          <button className={`mode-btn ${mode === "code" ? "active" : ""}`} onClick={() => setMode("code")} disabled={isGenerating}>
-            <Code size={14} /> Code
-          </button>
-          <button className="mode-btn" onClick={getBuildMessage} disabled={isGenerating} title="Show build message">
-            <Hammer size={14} /> Build
-          </button>
-          
-          {models.length > 0 && (
-            <div className="custom-select-wrapper chat-model-dropdown" style={{ marginLeft: "auto" }} ref={dropdownRef}>
-              <button 
-                className={`custom-select-trigger ${isModelDropdownOpen ? 'open' : ''}`}
-                onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
-                title="Select Model"
-              >
-                <span className="custom-select-text">
-                  {models.find(m => m.id === currentModel)?.name || "Select Model"}
-                </span>
-                <ChevronDown size={14} className="custom-select-icon" />
-              </button>
-              
-              {isModelDropdownOpen && (
-                <div className="custom-dropdown-menu chat-dropdown-menu">
-                  {models.map(m => (
-                    <button
-                      key={m.id}
-                      className={`custom-dropdown-item ${currentModel === m.id ? 'selected' : ''}`}
-                      onClick={() => {
-                        loadModel(m.id);
-                        setIsModelDropdownOpen(false);
-                      }}
-                    >
-                      {m.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+          <div className="input-modes">
+            <button className={`mode-btn ${mode === "ask" ? "active" : ""}`} onClick={() => setMode("ask")} disabled={isGenerating}>
+              <MessageSquare size={14} /> Ask
+            </button>
+            <button className={`mode-btn ${mode === "code" ? "active" : ""}`} onClick={() => setMode("code")} disabled={isGenerating}>
+              <Code size={14} /> Code
+            </button>
+          </div>
+
+          <div className="input-settings">
+            <button className="mode-btn" onClick={() => getBuildMessage(input)} disabled={isGenerating} title="Show build message">
+              <Hammer size={14} /> View prompt
+            </button>
+            
+            {models.length > 0 && (
+              <div className="custom-select-wrapper chat-model-dropdown" ref={dropdownRef}>
+                <button 
+                  className={`custom-select-trigger ${isModelDropdownOpen ? 'open' : ''}`}
+                  onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
+                  title="Select Model"
+                >
+                  <span className="custom-select-text">
+                    {models.find(m => m.id === currentModel)?.name || "Select Model"}
+                  </span>
+                  <ChevronDown size={14} className="custom-select-icon" />
+                </button>
+                
+                {isModelDropdownOpen && (
+                  <div className="custom-dropdown-menu chat-dropdown-menu">
+                    {models.map(m => (
+                      <button
+                        key={m.id}
+                        className={`custom-dropdown-item ${currentModel === m.id ? 'selected' : ''}`}
+                        onClick={() => {
+                          loadModel(m.id);
+                          setIsModelDropdownOpen(false);
+                        }}
+                      >
+                        {m.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="input-wrapper">

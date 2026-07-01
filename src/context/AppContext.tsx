@@ -34,6 +34,7 @@ interface AppContextType {
   sendHiddenCommand: (cmd: string) => void;
   sendMessage: (input: string, mode: string) => void;
   fetchRepoMap: (prompt?: string) => void;
+  fetchContext: () => void;
   handleCancel: () => void;
   handleApproval: (approved: boolean) => void;
   searchFiles: (query: string) => void;
@@ -51,7 +52,7 @@ interface AppContextType {
   models: { name: string; id: string }[];
   currentModel: string | null;
   loadModel: (model_id: string) => void;
-  getBuildMessage: () => void;
+  getBuildMessage: (user_input: string) => void;
   buildMessage: string | null;
   setBuildMessage: (msg: string | null) => void;
 }
@@ -90,6 +91,8 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const childRef = useRef<any>(null);
   const isRepomapReqRef = useRef(false);
   const isBuildMsgReqRef = useRef(false);
+  const isContextReqRef = useRef(false);
+  const contextPromiseRef = useRef<{ resolve: (value: string) => void, reject: (reason?: any) => void } | null>(null);
 
   useEffect(() => {
     async function startBackendAndConnect() {
@@ -145,6 +148,15 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
           setBuildMessage(data.payload.text || "No build message content found.");
           isBuildMsgReqRef.current = false;
           setStatus("Ready");
+        } else if (isContextReqRef.current) {
+          const text = data.payload.text || "";
+          if (contextPromiseRef.current) {
+            contextPromiseRef.current.resolve(text);
+            contextPromiseRef.current = null;
+          } else {
+            navigator.clipboard.writeText(text).catch(err => console.error("Clipboard writeText failed:", err));
+          }
+          isContextReqRef.current = false;
         }
         break;
       case "CoreLLMChunkReceived":
@@ -216,15 +228,33 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     sendCommand(wsRef.current, { command: "load_model", model_id, save_as_default: true });
   };
 
-  const getBuildMessage = () => {
+  const getBuildMessage = (user_input: string) => {
     isBuildMsgReqRef.current = true;
     setStatus("Fetching build message...");
-    sendCommand(wsRef.current, { command: "get_build_message" });
+    sendCommand(wsRef.current, { command: "get_build_message", user_input });
   };
 
   const openFile = (file: string) => {
     setOpenedFile(file);
     setMainView("file");
+  };
+
+  const fetchContext = () => {
+    isContextReqRef.current = true;
+    sendCommand(wsRef.current, { command: "get_context" });
+
+    if (navigator.clipboard && window.ClipboardItem) {
+      const p = new Promise<Blob>((resolve) => {
+        contextPromiseRef.current = {
+          resolve: (text: string) => resolve(new Blob([text], { type: "text/plain" })),
+          reject: () => resolve(new Blob([""], { type: "text/plain" }))
+        };
+      });
+      navigator.clipboard.write([new ClipboardItem({ "text/plain": p })]).catch(err => {
+        console.error("ClipboardItem write failed:", err);
+        contextPromiseRef.current = null;
+      });
+    }
   };
 
   const fetchRepoMap = (prompt: string = "") => {
@@ -260,7 +290,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       isConnected, status, workspace, setWorkspace, isGenerating, mainView, setMainView,
       chat, setChat, activeFiles, stats, approvalReq, maxMapTokens, setMaxMapTokens,
       repomapContent, isRepomapReq: isRepomapReqRef.current, sidebarVisible, setSidebarVisible, rightSidebarVisible, setRightSidebarVisible, showFuzzySearch, setShowFuzzySearch,
-      fuzzyResults, lastSessionUpdate, autocompleteResults, initWorkspace, sendHiddenCommand, sendMessage, fetchRepoMap, handleCancel,
+      fuzzyResults, lastSessionUpdate, autocompleteResults, initWorkspace, sendHiddenCommand, sendMessage, fetchRepoMap, fetchContext, handleCancel,
       handleApproval, searchFiles, fetchAutocomplete, clearAutocomplete, config, getConfig, updateConfig,
       showSettings, setShowSettings, openedFile, setOpenedFile, openFile,
       models, currentModel, loadModel, getBuildMessage,

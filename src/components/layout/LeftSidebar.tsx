@@ -14,7 +14,7 @@ type TreeNode = {
 
 export const Sidebar = () => {
   const { 
-    isConnected, searchFiles, stats, sendHiddenCommand,
+    isConnected, searchFiles, stats, sendHiddenCommand, fetchContext,
     sidebarVisible, fuzzyResults, workspace, activeFiles,
     openFile, setChat
   } = useApp();
@@ -36,7 +36,7 @@ export const Sidebar = () => {
   const [isCopied, setIsCopied] = useState(false);
 
   const handleCopyFiles = () => {
-    sendHiddenCommand(`/copy-context`);
+    fetchContext();
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2000);
   };

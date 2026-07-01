@@ -6,7 +6,7 @@ export type ClientCommand =
   | { command: "chat"; input: string; mode: "ask" | "code" }
   | { command: "get_repo_map"; user_input: string; max_map_tokens: number }
   | { command: "get_context" }
-  | { command: "get_build_message" }
+  | { command: "get_build_message"; user_input: string }
   | { command: "cancel" }
   | { command: "fuzzy_search_files"; query: string }
   | { command: "autocomplete"; input: string } // ADDED: Autocomplete command
