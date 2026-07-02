@@ -1,4 +1,3 @@
-hello
 # Init
 ```
 npm install

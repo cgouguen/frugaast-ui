@@ -8,7 +8,7 @@ import "./TitleBar.css";
 const appWindow = getCurrentWindow();
 
 export const TitleBar = () => {
-  const { sidebarVisible, setSidebarVisible, rightSidebarVisible, setRightSidebarVisible, isConnected, isGenerating, workspace, setWorkspace, initWorkspace, setShowSettings, config, updateConfig } = useApp();
+  const { sidebarVisible, setSidebarVisible, rightSidebarVisible, setRightSidebarVisible, isConnected, workspace, setWorkspace, initWorkspace, setShowSettings, config, updateConfig, setOpenWorkspaces } = useApp();
   const [isWorkspaceMenuOpen, setIsWorkspaceMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -40,6 +40,8 @@ export const TitleBar = () => {
         setWorkspace(pathStr);
         initWorkspace(pathStr);
         
+        setOpenWorkspaces(prev => prev.includes(pathStr) ? prev : [...prev, pathStr]);
+
         const currentRecent = Array.isArray(config?.recent_workspaces) ? config.recent_workspaces : [];
         const newRecent = [pathStr, ...currentRecent.filter((p: string) => p !== pathStr)].slice(0, 10);
         updateConfig("global", { recent_workspaces: newRecent });
@@ -52,6 +54,8 @@ export const TitleBar = () => {
     setWorkspace(path);
     initWorkspace(path);
     
+    setOpenWorkspaces(prev => prev.includes(path) ? prev : [...prev, path]);
+
     const currentRecent = Array.isArray(config?.recent_workspaces) ? config.recent_workspaces : [];
     const newRecent = [path, ...currentRecent.filter((p: string) => p !== path)].slice(0, 10);
     updateConfig("global", { recent_workspaces: newRecent });
@@ -75,7 +79,7 @@ export const TitleBar = () => {
         <span className="titlebar-title" data-tauri-drag-region>Frugaast</span>
         <ChevronRight size={14} className="titlebar-separator" />
         <div className="titlebar-workspace-wrapper" ref={menuRef}>
-          <button className="titlebar-workspace-btn" onClick={() => setIsWorkspaceMenuOpen(!isWorkspaceMenuOpen)} disabled={!isConnected || isGenerating} title="Workspace Options">
+          <button className="titlebar-workspace-btn" onClick={() => setIsWorkspaceMenuOpen(!isWorkspaceMenuOpen)} disabled={!isConnected} title="Workspace Options">
             <FolderOpen size={14} />
             <span className="truncate">{workspace ? workspace.split(/[/\\]/).pop() : "Open Workspace"}</span>
             <ChevronDown size={14} className="titlebar-workspace-chevron" />

@@ -371,7 +371,7 @@ export const Sidebar = () => {
                       const list = workspaceViewMode === 'flat' ? fuzzyResults : treeVisibleFiles;
                       if (e.key === "ArrowDown") { e.preventDefault(); setSelectedIndex(p => Math.min(p + 1, list.length - 1)); }
                       else if (e.key === "ArrowUp") { e.preventDefault(); setSelectedIndex(p => Math.max(p - 1, 0)); }
-                      else if (e.key === "Enter" && list[selectedIndex]) { e.preventDefault(); handleSelect(list[selectedIndex]); }
+                      else if ((e.key === "Enter" || e.key === " ") && list[selectedIndex]) { e.preventDefault(); handleSelect(list[selectedIndex]); }
                     }}
                   />
                   {query && <X size={14} className="clear-icon" onClick={() => { setQuery(''); searchFiles(''); }} />}

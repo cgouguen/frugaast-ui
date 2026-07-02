@@ -56,6 +56,8 @@ interface AppContextType {
   getBuildMessage: (user_input: string) => void;
   buildMessage: string | null;
   setBuildMessage: (msg: string | null) => void;
+  openWorkspaces: string[];
+  setOpenWorkspaces: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -87,6 +89,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const [models, setModels] = useState<{ name: string; id: string }[]>([]);
   const [currentModel, setCurrentModel] = useState<string | null>(null);
   const [buildMessage, setBuildMessage] = useState<string | null>(null);
+  const [openWorkspaces, setOpenWorkspaces] = useState<string[]>([]);
 
   const wsRef = useRef<WebSocket | null>(null);
   const childRef = useRef<any>(null);
@@ -119,9 +122,9 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       wsRef.current = ws;
       ws.onopen = () => { 
         setIsConnected(true); 
-          ("Ready"); 
-        ws.send(JSON.stringify({ command: "get_config" }));
-        ws.send(JSON.stringify({ command: "get_models" }));
+        setStatus("Ready"); 
+        ws.send(JSON.stringify({ command: "get_config", workspace_id: "default" }));
+        ws.send(JSON.stringify({ command: "get_models", workspace_id: "default" }));
       };
       ws.onmessage = (event) => handleServerEvent(JSON.parse(event.data));
       ws.onclose = () => { setIsConnected(false); setStatus("Disconnected. Retrying..."); setTimeout(connectWebSocket, 3000); };
@@ -135,6 +138,11 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   function handleServerEvent(data: ServerEvent) {
+    // Ignore events from other workspaces unless they are system-wide/default
+    if (data.workspace_id !== "default" && workspace && data.workspace_id !== workspace) {
+      return;
+    }
+
     switch (data.type) {
       case "CoreContextUpdated": setActiveFiles(data.payload.active_files); break;
       case "ContextStatsUpdated": setStats(data.payload); break;
@@ -201,13 +209,14 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
 
   // --- Actions ---
   const sendHiddenCommand = (cmd: string) => {
+    if (!workspace) return;
     isRepomapReqRef.current = false;
-    sendCommand(wsRef.current, { command: "chat", input: cmd, mode: "ask" });
+    sendCommand(wsRef.current, { command: "chat", input: cmd, mode: "ask", workspace_id: workspace });
   };
   
   const initWorkspace = (path: string) => {
     setOpenedFile(null);
-    sendCommand(wsRef.current, { command: "init_workspace", path });
+    sendCommand(wsRef.current, { command: "init_workspace", path, workspace_id: path });
   };
   
   const searchFiles = async (query: string) => {
@@ -220,24 +229,28 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const fetchAutocomplete = (input: string) => sendCommand(wsRef.current, { command: "autocomplete", input });
+  const fetchAutocomplete = (input: string) => {
+    if (!workspace) return;
+    sendCommand(wsRef.current, { command: "autocomplete", input, workspace_id: workspace });
+  };
   const clearAutocomplete = () => setAutocompleteResults([]);
 
-  const getConfig = () => sendCommand(wsRef.current, { command: "get_config" });
+  const getConfig = () => sendCommand(wsRef.current, { command: "get_config", workspace_id: workspace || "default" });
   const updateConfig = (scope: "local" | "global", updates: Record<string, any>) => {
     setConfig(prev => ({ ...prev, ...updates }));
-    sendCommand(wsRef.current, { command: "update_config", scope, updates });
+    sendCommand(wsRef.current, { command: "update_config", scope, updates, workspace_id: workspace || "default" });
   };
 
   const loadModel = (model_id: string) => {
     setCurrentModel(model_id);
-    sendCommand(wsRef.current, { command: "load_model", model_id, save_as_default: true });
+    sendCommand(wsRef.current, { command: "load_model", model_id, save_as_default: true, workspace_id: workspace || "default" });
   };
 
   const getBuildMessage = (user_input: string) => {
+    if (!workspace) return;
     isBuildMsgReqRef.current = true;
     setStatus("Fetching build message...");
-    sendCommand(wsRef.current, { command: "get_build_message", user_input });
+    sendCommand(wsRef.current, { command: "get_build_message", user_input, workspace_id: workspace });
   };
 
   const openFile = (file: string) => {
@@ -246,8 +259,9 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const fetchContext = () => {
+    if (!workspace) return;
     isContextReqRef.current = true;
-    sendCommand(wsRef.current, { command: "get_context" });
+    sendCommand(wsRef.current, { command: "get_context", workspace_id: workspace });
 
     if (navigator.clipboard && window.ClipboardItem) {
       const p = new Promise<Blob>((resolve) => {
@@ -264,30 +278,32 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const fetchRepoMap = (prompt: string = "") => {
+    if (!workspace) return;
     if (isGenerating && !isRepomapReqRef.current) return;
     isRepomapReqRef.current = true;
     setRepomapContent("");
-    sendCommand(wsRef.current, { command: "get_repo_map", user_input: prompt, max_map_tokens: maxMapTokens });
+    sendCommand(wsRef.current, { command: "get_repo_map", user_input: prompt, max_map_tokens: maxMapTokens, workspace_id: workspace });
     setIsGenerating(true); setStatus("Generating RepoMap...");
   };
 
   const sendMessage = (input: string, mode: string) => {
+    if (!workspace) return;
     setMainView("chat");
     isRepomapReqRef.current = false;
     setChat((prev) => [...prev, { role: "user", content: input }]);
-    sendCommand(wsRef.current, { command: "chat", input, mode: mode as "ask" | "code" });
+    sendCommand(wsRef.current, { command: "chat", input, mode: mode as "ask" | "code", workspace_id: workspace });
     setIsGenerating(true); setStatus("Generating response...");
   };
 
   const handleCancel = () => {
-    sendCommand(wsRef.current, { command: "cancel" });
+    sendCommand(wsRef.current, { command: "cancel", workspace_id: workspace || "default" });
     setIsGenerating(false); setStatus("Cancelled");
   };
 
   const handleApproval = (approved: boolean) => {
     if (!approvalReq) return;
     setChat((prev) => [...prev, { role: "user", content: approved ? "Approved file access." : "Denied file access." }]);
-    sendCommand(wsRef.current, { command: "approval_response", approval_id: approvalReq.approval_id, approved });
+    sendCommand(wsRef.current, { command: "approval_response", approval_id: approvalReq.approval_id, approved, workspace_id: workspace || "default" });
     setApprovalReq(null);
   };
 
@@ -300,7 +316,8 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       handleApproval, searchFiles, fetchAutocomplete, clearAutocomplete, config, getConfig, updateConfig,
       showSettings, setShowSettings, openedFile, setOpenedFile, openFile,
       models, currentModel, loadModel, getBuildMessage,
-      buildMessage, setBuildMessage
+      buildMessage, setBuildMessage,
+      openWorkspaces, setOpenWorkspaces
     }}>
       {children}
     </AppContext.Provider>

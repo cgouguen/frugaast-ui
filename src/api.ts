@@ -1,7 +1,7 @@
 // src/api.ts
 
 // 1. COMMANDS (Client -> Server)
-export type ClientCommand = 
+export type ClientCommand = { workspace_id: string } & (
   | { command: "init_workspace"; path?: string } // Made path optional to match Python
   | { command: "chat"; input: string; mode: "ask" | "code" }
   | { command: "get_repo_map"; user_input: string; max_map_tokens: number }
@@ -13,10 +13,11 @@ export type ClientCommand =
   | { command: "get_config" }
   | { command: "update_config"; scope: "local" | "global"; updates: Record<string, any> }
   | { command: "get_models" }
-  | { command: "load_model"; model_id: string; save_as_default?: boolean };
+  | { command: "load_model"; model_id: string; save_as_default?: boolean }
+);
 
 // 2. EVENTS (Server -> Client)
-export type ServerEvent =
+export type ServerEvent = { workspace_id: string } & (
   | { type: "CoreContextUpdated"; payload: { active_files: string[] } }
   | { type: "ContextStatsUpdated"; payload: { tokens: number; cost: number; session_cost: number } }
   | { type: "CoreAgenticTaskProgress"; payload: { message: string } }
@@ -27,7 +28,8 @@ export type ServerEvent =
   | { type: "CoreUserFileApprovalRequested"; payload: { approval_id: string; files: string[] } }
   | { type: "AutocompleteOptions"; payload: { options: string[]; input: string } }
   | { type: "ConfigState"; payload: { config: Record<string, any> } }
-  | { type: "AvailableModels"; payload: { models: { name: string; id: string }[]; current_model?: string } };
+  | { type: "AvailableModels"; payload: { models: { name: string; id: string }[]; current_model?: string } }
+);
 
 // 3. Helper to send typed commands
 export function sendCommand(ws: WebSocket | null, cmd: ClientCommand) {

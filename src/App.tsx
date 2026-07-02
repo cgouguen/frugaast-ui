@@ -9,6 +9,7 @@ import { FileView } from "./components/view_file/FileView";
 import { ApprovalModal } from "./components/modals/ApprovalModal";
 import { SettingsModal } from "./components/modals/SettingsModal";
 import { RightSidebar } from "./components/layout/RightSidebar";
+import { WorkspaceTabBar } from "./components/layout/workspace_tabbar";
 import "./App.css";
 
 function AppContent() {
@@ -32,9 +33,11 @@ function AppContent() {
   }, [sidebarVisible, setSidebarVisible, rightSidebarVisible, setRightSidebarVisible]);
 
   return (
-    <div className="app-layout" style={{ flex: 1, height: 'calc(100vh - 32px)', overflow: 'hidden', display: 'flex' }}>
-      <Sidebar />
-      <main className="main-area" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, height: 'calc(100vh - 32px)', overflow: 'hidden' }}>
+      <WorkspaceTabBar />
+      <div className="app-layout" style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
+        <Sidebar />
+        <main className="main-area" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         <TopBar />
         
         <div className="view-content-wrapper">
@@ -50,10 +53,11 @@ function AppContent() {
         </div>
       </main>
 
-      <RightSidebar />
+        <RightSidebar />
 
-      <ApprovalModal />
-      <SettingsModal />
+        <ApprovalModal />
+        <SettingsModal />
+      </div>
     </div>
   );
 }
